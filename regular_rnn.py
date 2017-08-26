@@ -62,4 +62,4 @@ class RegularRNN:
 
     def is_accept(self, state):
         y_hat = self.sess.run(self.prediction, feed_dict={self.init_state_ph: state, self.input_ph: []})
-        return y_hat > 0
+        return y_hat[0][0] > 0
