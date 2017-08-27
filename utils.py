@@ -3,7 +3,9 @@ import pydot
 from main import init_state
 from search_node import SearchNode
 from state import State
+from config import Config
 
+config = Config()
 
 def print_graph(nodes_list, graph_name):
     graph = pydot.Dot(graph_type='digraph')
@@ -38,7 +40,7 @@ def minimize_dfa(nodes):
     states = nodes
     start = SearchNode(State(init_state, quantized=tuple(init_state)))
     accepts = [node for node in nodes if node.is_accept]
-    alphabet = [1, 2]
+    alphabet = [int(i) for i in config.Grammar.alphabet.str]
 
     def delta(state, char):
         return nodes[state].get(char, fail_state)  # return fail state in case no transition is set
