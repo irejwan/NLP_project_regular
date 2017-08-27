@@ -48,6 +48,7 @@ def get_raw_data(DATA_AMOUNT):
 def generate_sentences(DATA_AMOUNT):
     """Generate data and return it splitted to train, test and labels"""
     raw_x, raw_y = get_raw_data(DATA_AMOUNT)
+    # raw_x, raw_y = get_1_star_2_star(DATA_AMOUNT)
     percenta = int(DATA_AMOUNT * 0.8)
     zipped = list(zip(raw_x, raw_y))
     random.shuffle(zipped)
@@ -67,3 +68,32 @@ def generate_sentences(DATA_AMOUNT):
     y_train = np.array([np.array(x) for x in y_train])
     y_test = np.array([np.array(x) for x in y_test])
     return X_train, y_train, X_test, y_test
+
+
+def get_1_star_2_star(total_num_of_sents):
+    min_seq_len = config.Grammar.min_sentence_length.int
+    max_seq_len = config.Grammar.max_sentence_length.int
+    ns = np.random.randint(low=min_seq_len, high=max_seq_len // 2, size=total_num_of_sents // 2)
+    grammaticals = list(map(lambda n: '12' * n, ns))
+    ungrammaticals = []
+    left = total_num_of_sents // 2
+    while left > 0:
+        curr_ungrammaticals = generate_random_strings(max_seq_len, left, alphabet=config.Grammar.alphabet.str)
+        ungrammaticals += list(filter(filter_out_1_star_2_star, curr_ungrammaticals))
+        left = (total_num_of_sents // 2) - len(ungrammaticals)
+
+    data = list(map(lambda sent: [int(s) for s in list(sent)], grammaticals + ungrammaticals))
+    labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
+    return data, labels
+
+
+def generate_random_strings(max_length, num_of_sents, alphabet):
+    random_lengths = np.random.randint(low=1, high=max_length, size=num_of_sents)
+    return [rstr.rstr(alphabet, length) for length in random_lengths]
+
+
+def filter_out_1_star_2_star(sent):
+    n = len(sent) // 2
+    if '12' * n == sent:
+        return False
+    return True
