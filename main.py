@@ -1,7 +1,8 @@
 from extract_states import *
 from utils import *
 from data_utils import generate_sentences
-from regular_rnn import RegularRNN
+# from regular_rnn import RegularRNN
+from vanilla_rnn import VanillaRNN
 import tensorflow as tf
 from config import Config
 
@@ -14,56 +15,96 @@ state_size = config.RNN.state_size.int
 init_state = np.zeros(state_size)
 
 
+params = dict()
+params['emb'] = 10
+params['state'] = 10
+params['batch'] = 1
+params['vocab'] = 3
+params['actions'] = 3
+params['init_state'] = np.zeros([params['batch'], params['state']])
+DELTA = 0.5
+
+
 def train(X_train, y_train, X_test, y_test, sess, rnn):
     merged = tf.summary.merge_all()
-    train_writer = tf.summary.FileWriter('board', sess.graph)
-    errors = list()
+
+    train_writer = tf.summary.FileWriter('train', sess.graph)
 
     print("Start learning...")
     for epoch in range(NUM_EPOCHS):
         loss_train = 0
         accuracy_train = 0
-        i = 0
 
         print("epoch: {}\t".format(epoch), end="")
 
         # Training
         for sentence, label in zip(X_train, y_train):
-            acc, loss_tr, _, summary = sess.run([rnn.accuracy, rnn.loss, rnn.optimizer, merged],
-                                                feed_dict={rnn.label_ph: label,
-                                                           rnn.init_state_ph: [init_state],
-                                                           rnn.input_ph: sentence})
-
+            acc, loss_tr = rnn.train(sentence, label)
             accuracy_train += acc
-            loss_train += loss_tr
-            train_writer.add_summary(summary, i)
-            i += 1
+            loss_train = loss_tr * DELTA + loss_train * (1 - DELTA)
+            # train_writer.add_summary(summary, b)
         accuracy_train /= len(y_train)
-        loss_train /= len(y_train)
 
         # Testing
-        accuracy_test = 0
-        loss_test = 0
-
-        for sentence, label in zip(X_test, y_test):
-            loss, acc = sess.run([rnn.loss, rnn.accuracy],
-                                 feed_dict={rnn.label_ph: label, rnn.input_ph: sentence,
-                                            rnn.init_state_ph: [init_state]})
-            accuracy_test += acc
-            loss_test += loss
-
-            if (epoch == NUM_EPOCHS - 1) and (acc == 0):  # last epoch
-                errors.append(sentence)
-
-        accuracy_test /= len(y_test)
-        loss_test /= len(y_test)
+        accuracy_test, loss_test = rnn.test(X_test, y_test)
 
         print("loss: {:.3f}, val_loss: {:.3f}, acc: {:.3f}, val_acc: {:.3f}".format(
             loss_train, loss_test, accuracy_train, accuracy_test
         ))
 
     train_writer.close()
-    return errors
+
+
+# def train(X_train, y_train, X_test, y_test, sess, rnn):
+#     merged = tf.summary.merge_all()
+#     train_writer = tf.summary.FileWriter('board', sess.graph)
+#     errors = list()
+#
+#     print("Start learning...")
+#     for epoch in range(NUM_EPOCHS):
+#         loss_train = 0
+#         accuracy_train = 0
+#         i = 0
+#
+#         print("epoch: {}\t".format(epoch), end="")
+#
+#         # Training
+#         for sentence, label in zip(X_train, y_train):
+#             acc, loss_tr, _, summary = sess.run([rnn.accuracy, rnn.loss, rnn.optimizer, merged],
+#                                                 feed_dict={rnn.label_ph: label,
+#                                                            rnn.init_state_ph: [init_state],
+#                                                            rnn.input_ph: sentence})
+#
+#             accuracy_train += acc
+#             loss_train += loss_tr
+#             train_writer.add_summary(summary, i)
+#             i += 1
+#         accuracy_train /= len(y_train)
+#         loss_train /= len(y_train)
+#
+#         # Testing
+#         accuracy_test = 0
+#         loss_test = 0
+#
+#         for sentence, label in zip(X_test, y_test):
+#             loss, acc = sess.run([rnn.loss, rnn.accuracy],
+#                                  feed_dict={rnn.label_ph: label, rnn.input_ph: sentence,
+#                                             rnn.init_state_ph: [init_state]})
+#             accuracy_test += acc
+#             loss_test += loss
+#
+#             if (epoch == NUM_EPOCHS - 1) and (acc == 0):  # last epoch
+#                 errors.append(sentence)
+#
+#         accuracy_test /= len(y_test)
+#         loss_test /= len(y_test)
+#
+#         print("loss: {:.3f}, val_loss: {:.3f}, acc: {:.3f}, val_acc: {:.3f}".format(
+#             loss_train, loss_test, accuracy_train, accuracy_test
+#         ))
+#
+#     train_writer.close()
+#     return errors
 
 
 def extract_graphs(X):
@@ -94,7 +135,8 @@ def extract_graphs(X):
 if __name__ == '__main__':
     X_train, y_train, X_test, y_test = generate_sentences(DATA_AMOUNT)
     sess = tf.InteractiveSession()
-    rnn = RegularRNN(sess)
+    rnn = VanillaRNN(sess, params)
+    # rnn = RegularRNN(sess)
     sess.run(tf.global_variables_initializer())
     train(X_train, y_train, X_test, y_test, sess, rnn)
     extract_graphs(X_train)

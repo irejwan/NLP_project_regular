@@ -37,7 +37,9 @@ class RegularRNN:
         stackcell = BasicRNNCell(state_size)
         _, self.final_state = rnn(stackcell, input, initial_state=tf.cast(self.init_state_ph, tf.float32))
         with tf.name_scope('prediction'):
-            self.prediction = slim.fully_connected(self.final_state, 1, activation_fn=None)
+            self.prediction = slim.fully_connected(self.final_state, 1, activation_fn=None,
+                                                   weights_initializer=tf.contrib.layers.xavier_initializer(),
+                                                   biases_initializer=tf.truncated_normal_initializer())
 
         # RNN loss
         self.label_ph = tf.placeholder(tf.float32, name='label_ph')
@@ -47,7 +49,8 @@ class RegularRNN:
 
         with tf.name_scope('rnn_optimizer'):
             global_step = tf.Variable(0, trainable=False)
-            lr = tf.train.exponential_decay(0.001, global_step, 1000, 0.96, staircase=True)
+            # lr = tf.train.exponential_decay(0.001, global_step, 1000, 0.96, staircase=True)
+            lr = 1e-3
             self.optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss, global_step=global_step)
 
         with tf.name_scope('accuracy'):
