@@ -16,11 +16,9 @@ init_state = np.zeros(state_size)
 
 
 params = dict()
-params['emb'] = 10
-params['state'] = 10
+params['state'] = state_size
 params['batch'] = 1
 params['vocab'] = 3
-params['actions'] = 3
 params['init_state'] = np.zeros([params['batch'], params['state']])
 DELTA = 0.5
 
@@ -117,6 +115,7 @@ def extract_graphs(X):
 
     for node in analog_nodes:
         node.transitions = analog_nodes[node]
+    # print_graph(analog_nodes, 'orig.png')
     print('num of nodes in original graph:', len(analog_nodes))
 
     trimmed_graph = get_trimmed_graph(analog_nodes)
@@ -127,9 +126,9 @@ def extract_graphs(X):
     print_graph(reduced_nodes, 'graph_minimized_mn.png')
     print('num of nodes in mn graph:', len(reduced_nodes))
 
-    states_vectors_pool = [node.state.vec for node in trimmed_graph]
-    quantized_nodes = minimize_graph_by_quantization(states_vectors_pool, init_state, rnn, max_k=len(reduced_nodes) + 1)
-    print_graph(quantized_nodes, 'graph_reduced.png')
+    # states_vectors_pool = [node.state.vec for node in trimmed_graph]
+    # quantized_nodes = minimize_graph_by_quantization(states_vectors_pool, init_state, rnn, max_k=len(reduced_nodes) + 1)
+    # print_graph(quantized_nodes, 'graph_reduced.png')
 
 
 if __name__ == '__main__':

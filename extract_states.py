@@ -44,13 +44,13 @@ def get_analog_nodes(train_data, init_state, net):
         if curr_node not in analog_nodes:
             analog_nodes[curr_node] = {}
         for word in sent:
-            curr_node.state.final = net.is_accept(np.array([curr_node.state.vec]))
             next_state_vec = np.array(net.get_next_state(curr_node.state.vec, word))
             next_node = SearchNode(State(next_state_vec, quantized=tuple(next_state_vec)))
             if next_node not in analog_nodes:  # we do this in order to make sure *all* states are in analog_nodes
                 analog_nodes[next_node] = {}
             analog_nodes[curr_node][word] = next_node
             curr_node = next_node
+        curr_node.state.final = net.is_accept(np.array([curr_node.state.vec]))
     return analog_nodes
 
 
