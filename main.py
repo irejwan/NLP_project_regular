@@ -17,6 +17,7 @@ init_state = np.zeros(state_size)
 def train(X_train, y_train, X_test, y_test, sess, rnn):
     merged = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter('board', sess.graph)
+    correct = []
 
     print("Start learning...")
     for epoch in range(NUM_EPOCHS):
@@ -37,6 +38,7 @@ def train(X_train, y_train, X_test, y_test, sess, rnn):
             loss_train += loss_tr
             train_writer.add_summary(summary, i)
             i += 1
+
         accuracy_train /= len(y_train)
         loss_train /= len(y_train)
 
@@ -51,6 +53,9 @@ def train(X_train, y_train, X_test, y_test, sess, rnn):
             accuracy_test += acc
             loss_test += loss
 
+            if epoch == NUM_EPOCHS - 1 and acc == 1:
+                correct.append(sentence)
+
         accuracy_test /= len(y_test)
         loss_test /= len(y_test)
 
@@ -59,6 +64,7 @@ def train(X_train, y_train, X_test, y_test, sess, rnn):
         ))
 
     train_writer.close()
+    return correct
 
 
 def extract_graphs(X):
@@ -92,5 +98,6 @@ if __name__ == '__main__':
     sess = tf.InteractiveSession()
     rnn = RegularRNN(sess)
     sess.run(tf.global_variables_initializer())
-    train(X_train, y_train, X_test, y_test, sess, rnn)
-    extract_graphs(X_train)
+    correct = train(X_train, y_train, X_test, y_test, sess, rnn)
+    print(len(correct))
+    extract_graphs(correct)

@@ -48,7 +48,7 @@ def get_raw_data(DATA_AMOUNT):
 def generate_sentences(DATA_AMOUNT):
     """Generate data and return it splitted to train, test and labels"""
     raw_x, raw_y = get_raw_data(DATA_AMOUNT)
-    percenta = int(DATA_AMOUNT * 0.8)
+    percenta = int(DATA_AMOUNT * 0.7)
     zipped = list(zip(raw_x, raw_y))
     random.shuffle(zipped)
     raw_x, raw_y = zip(*zipped)
