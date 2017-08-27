@@ -3,11 +3,9 @@ from utils import *
 from data_utils import generate_sentences
 from regular_rnn import RegularRNN
 import tensorflow as tf
-import matplotlib.pyplot as plt
 from config import Config
 
 config = Config()
-
 
 DATA_AMOUNT = config.RNN.DATA_AMOUNT.int
 NUM_EPOCHS = config.RNN.NUM_EPOCHS.int
@@ -68,27 +66,19 @@ def train(X_train, y_train, X_test, y_test, sess, rnn):
     return errors
 
 
-def morco(X):
-    analog_nodes, states_pool = get_analog_nodes(X, rnn, init_state)
-    analog_nodes_states = analog_nodes.keys()
+def extract_graphs(X):
+    """
+    after the net has trained enough, we calculate the states returned and print the graphs of them.
+    :param X: the training data
+    :return: nothing
+    """
+    analog_nodes = get_analog_nodes(X, init_state, rnn)
+
     for node in analog_nodes:
         node.transitions = analog_nodes[node]
-    print_graph(analog_nodes_states, 'graph.png')
-    print('num of nodes in original graph:', len(analog_nodes_states))
+    print('num of nodes in original graph:', len(analog_nodes))
 
-    graph_copy = copy(analog_nodes)
-    assert len(graph_copy) == len(analog_nodes)
-    reversed_graph_nodes = get_reverse_graph(graph_copy)
-    print_graph(reversed_graph_nodes, 'reversed_graph.png')
-    reachable_nodes = get_reachable_nodes(reversed_graph_nodes)
-    trimmed_graph = set()
-    for node in set(analog_nodes_states):
-        if node in reachable_nodes:
-            trimmed_graph.add(node)
-            new_trans = {char: next_node for char, next_node in node.transitions.items()
-                         if next_node in reachable_nodes}
-            node.transitions = new_trans  # updating the node's transitions so it will not lead to dead nodes
-    assert len([node for node in trimmed_graph if node.is_accept]) == len([node for node in analog_nodes if node.is_accept])
+    trimmed_graph = get_trimmed_graph(analog_nodes)
     print_graph(trimmed_graph, 'trimmed_graph.png')
     print('num of nodes in trimmed graph:', len(trimmed_graph))
 
@@ -96,53 +86,15 @@ def morco(X):
     print_graph(reduced_nodes, 'graph_minimized_mn.png')
     print('num of nodes in mn graph:', len(reduced_nodes))
 
-    states_pool = np.array(states_pool)
-
-    kmeans_model = get_best_kmeans_model(states_pool, len(reduced_nodes) + 1)
-    analog_states = [State(vec) for vec in states_pool]
-    quantize_states(analog_states, kmeans=kmeans_model)
-    nodes_list = get_graph(rnn, analog_states[0], [1, 2], kmeans_model=kmeans_model)
-
-    for node in nodes_list:
-        node.state.final = rnn.is_accept([node.state.quantized])
-
-    print_graph(nodes_list, 'graph_reduced.png')
-
-    print(len(analog_states))
-    print(kmeans_model.cluster_centers_.shape)
-    plt.scatter(states_pool[:, 0], states_pool[:, 1])
-    plt.scatter(kmeans_model.cluster_centers_[:, 0], kmeans_model.cluster_centers_[:, 1], c='r')
-    plt.draw()
-    plt.show()
-
-    for state in nodes_list:
-        is_accept = rnn.is_accept([state.state.quantized])
-        print(is_accept)
-        print(state)
-
-
-def test():
-    states = [SearchNode(State([i])) for i in range(7)]
-    s0, s1, s2, s3, s4, s5, s6 = states
-    s0.transitions = {1: s2, 2: s1}
-    s1.transitions = {2: s6}
-    s2.transitions = {2: s3}
-    s3.transitions = {1: s4}
-    s4.transitions = {2: s5}
-    s5.state.final = True
-    states_dict = {s0: s0.transitions, s1: s1.transitions, s2: s2.transitions, s3: s3.transitions,
-                   s4: s4.transitions, s5: s5.transitions, s6: s6.transitions}
-    reversed_graph_nodes = get_reverse_graph(copy(states_dict))
-    reachable_nodes = get_reachable_nodes(reversed_graph_nodes)
-    trimmed_graph = set.intersection(set(states_dict.keys()), reachable_nodes)
-    print(len(trimmed_graph))
+    states_vectors_pool = [node.state.vec for node in trimmed_graph]
+    quantized_nodes = minimize_graph_by_quantization(states_vectors_pool, init_state, rnn, max_k=len(reduced_nodes) + 1)
+    print_graph(quantized_nodes, 'graph_reduced.png')
 
 
 if __name__ == '__main__':
-    # test()
     X_train, y_train, X_test, y_test = generate_sentences(DATA_AMOUNT)
     sess = tf.InteractiveSession()
     rnn = RegularRNN(sess)
     sess.run(tf.global_variables_initializer())
     train(X_train, y_train, X_test, y_test, sess, rnn)
-    morco(X_train)
+    extract_graphs(X_train)
