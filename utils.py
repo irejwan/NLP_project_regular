@@ -40,7 +40,9 @@ def minimize_dfa(nodes):
     states = nodes
     start = SearchNode(State(init_state, quantized=tuple(init_state)))
     accepts = [node for node in nodes if node.is_accept]
-    alphabet = [int(i) for i in config.Grammar.alphabet.str]
+    alphabet = set()
+    for node in nodes:  # making sure this is the alphabet that is actually being used
+        alphabet.update(key for key in node.transitions)
 
     def delta(state, char):
         return nodes[state].get(char, fail_state)  # return fail state in case no transition is set

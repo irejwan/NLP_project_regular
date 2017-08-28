@@ -23,7 +23,7 @@ def variable_summaries(var):
 class RegularRNN:
     def __init__(self, sess):
         state_size = config.RNN.state_size.int
-        vocab_size = len(config.Grammar.alphabet.str)
+        vocab_size = len(config.Grammar.alphabet.lst)
         self.sess = sess
 
         # RNN placeholders
