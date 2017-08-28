@@ -37,12 +37,12 @@ def get_analog_nodes(train_data, init_state, net):
     :param init_state: the initial state (we start from this state for each input sentence)
     :return: all possible nodes, including transitions to the next nodes.
     """
-    analog_nodes = {}
+
+    init_node = SearchNode(State(init_state, quantized=tuple(init_state)))
+    init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
+    analog_nodes = {init_node: {}}
     for sent in train_data:
-        curr_state = init_state
-        curr_node = SearchNode(State(curr_state, quantized=tuple(curr_state)))
-        if curr_node not in analog_nodes:
-            analog_nodes[curr_node] = {}
+        curr_node = init_node
         for word in sent:
             next_state_vec = np.array(net.get_next_state(curr_node.state.vec, word))
             next_node = SearchNode(State(next_state_vec, quantized=tuple(next_state_vec)))
