@@ -101,3 +101,4 @@ if __name__ == '__main__':
     correct = train(X_train, y_train, X_test, y_test, sess, rnn)
     print(len(correct))
     extract_graphs(correct)
+    # end
