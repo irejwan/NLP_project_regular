@@ -1,4 +1,6 @@
 import random
+import re
+
 import rstr
 from random import shuffle
 import numpy as np
@@ -137,16 +139,35 @@ def get_penn_pos_data(total_num_of_sents):
     return data, labels
 
 
-def generate_simple_english_grammar(num_of_sents):
-    output = set()
+def generate_simple_english_grammar(num_of_sents, max_seq_len):
     pcfg = PCFG.from_file('grammar.txt')
-    for i in range(num_of_sents):
-        output.add(pcfg.random_tree())
+    output = set()
+    while len(output) < num_of_sents:
+        sent = pcfg.random_sent()
+        if len(sent.split()) < max_seq_len:
+            output.add(sent)
     return output
 
 
+def filter_out_sentences_that_match_the_pattern(sent, regex):
+    pattern = re.compile(regex)
+    if pattern.match(sent):
+        return False
+    return True
+
+
 def get_simple_pos_data(num_of_sents):
-    grammaticals = generate_simple_english_grammar(num_of_sents//2)
+    max_seq_len = config.Grammar.max_sentence_length.int
+    regex = '((Det )?(Adj )*Noun )+((Prep )(Det )?(Adj )*Noun )?V (((Det )?(Adj )*Noun )+((Prep )(Det )?(Adj )*Noun )?)?'
+    grammaticals = generate_simple_english_grammar(num_of_sents//2, max_seq_len)
+    ungrammaticals = []
+    alphabet = ['Det ', 'Adj ', 'Noun ', 'Prep ', 'V ']
+    left = num_of_sents // 2
+    while left > 0:
+        curr_ungrammaticals = generate_random_strings(max_seq_len, left, alphabet)
+        ungrammaticals += list(filter(lambda sent: filter_out_sentences_that_match_the_pattern(sent, regex),
+                                      curr_ungrammaticals))
+        left = (num_of_sents // 2) - len(ungrammaticals)
     return grammaticals
 
 
