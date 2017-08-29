@@ -3,6 +3,7 @@ import rstr
 from random import shuffle
 import numpy as np
 from config import Config
+from PCFG import PCFG
 
 config = Config()
 
@@ -48,7 +49,7 @@ def get_raw_data(DATA_AMOUNT):
 
 def generate_sentences(DATA_AMOUNT):
     """Generate data and return it splitted to train, test and labels"""
-    raw_x, raw_y = get_pos_data(DATA_AMOUNT)
+    raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT)
     # raw_x, raw_y = get_raw_data(DATA_AMOUNT)
     # raw_x, raw_y = get_1_star_2_star(DATA_AMOUNT)
     percenta = int(DATA_AMOUNT * 0.8)
@@ -117,7 +118,7 @@ pos_category_map = \
 pos_category_to_num = {cat: i for i, cat in enumerate(sorted(set(pos_category_map.values())))}
 
 
-def get_pos_data(total_num_of_sents):
+def get_penn_pos_data(total_num_of_sents):
     grammatical_sents = read_conll_pos_file("../Penn_Treebank/dev.gold.conll")
     grammaticals = list(grammatical_sents)[:total_num_of_sents//2]
 
@@ -134,6 +135,19 @@ def get_pos_data(total_num_of_sents):
     data = grammaticals + ungrammaticals
     labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
     return data, labels
+
+
+def generate_simple_english_grammar(num_of_sents):
+    output = set()
+    pcfg = PCFG.from_file('grammar.txt')
+    for i in range(num_of_sents):
+        output.add(pcfg.random_tree())
+    return output
+
+
+def get_simple_pos_data(num_of_sents):
+    grammaticals = generate_simple_english_grammar(num_of_sents//2)
+    return grammaticals
 
 
 def filter_out_grammatical_sentences(ungrammatical_sent, grammatical_sents):
@@ -166,4 +180,4 @@ def read_conll_pos_file(path):
 
 
 if __name__ == '__main__':
-    get_pos_data(100)
+    get_simple_pos_data(100)
