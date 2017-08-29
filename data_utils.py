@@ -157,18 +157,25 @@ def filter_out_sentences_that_match_the_pattern(sent, regex):
 
 
 def get_simple_pos_data(num_of_sents):
-    max_seq_len = config.Grammar.max_sentence_length.int
-    regex = '((Det )?(Adj )*Noun )+((Prep )(Det )?(Adj )*Noun )?V (((Det )?(Adj )*Noun )+((Prep )(Det )?(Adj )*Noun )?)?'
-    grammaticals = generate_simple_english_grammar(num_of_sents//2, max_seq_len)
+    # todo: read regex from config
+    regex = '^(Det )?(Adj ){0,3}Noun ((Prep )(Det )?(Adj ){0,3}Noun )?V (((Det )?(Adj ){0,3}Noun )((Prep )(Det )?(Adj ){0,3}Noun )?)?$'
+    grammaticals = [rstr.xeger(regex).split(' ')[:-1] for _ in range(num_of_sents // 2)]
+    max_seq_len = max([len(sent) for sent in grammaticals])
     ungrammaticals = []
     alphabet = ['Det ', 'Adj ', 'Noun ', 'Prep ', 'V ']
+    # todo: make it more generic - parse it from regex
+    alphbet_map = {a: i for i, a in enumerate(alphabet)}
     left = num_of_sents // 2
     while left > 0:
         curr_ungrammaticals = generate_random_strings(max_seq_len, left, alphabet)
-        ungrammaticals += list(filter(lambda sent: filter_out_sentences_that_match_the_pattern(sent, regex),
+        filtered = list(filter(lambda sent: filter_out_sentences_that_match_the_pattern(sent, regex),
                                       curr_ungrammaticals))
+        ungrammaticals += [sent.split(' ')[:-1] for sent in filtered]
         left = (num_of_sents // 2) - len(ungrammaticals)
-    return grammaticals
+    data = grammaticals + ungrammaticals
+    # todo: map to numbers
+    labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
+    return data, labels
 
 
 def filter_out_grammatical_sentences(ungrammatical_sent, grammatical_sents):
@@ -201,4 +208,4 @@ def read_conll_pos_file(path):
 
 
 if __name__ == '__main__':
-    get_simple_pos_data(100)
+    print(list(zip(*get_simple_pos_data(100))))
