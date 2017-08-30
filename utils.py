@@ -28,7 +28,7 @@ def print_graph(nodes_list, graph_name):
     graph.write_png(graph_name)
 
 
-def minimize_dfa(nodes):
+def minimize_dfa(nodes, start):
     """
     building a DFA automaton from the nodes, and returning an equal graph using MN algorithm.
     :param nodes: the original nodes.
@@ -39,7 +39,7 @@ def minimize_dfa(nodes):
     nodes.update({fail_state: {}})
 
     states = nodes
-    start = SearchNode(State(init_state, quantized=tuple(init_state)))
+    # start = SearchNode(State(init_state, quantized=tuple(init_state)))
     accepts = [node for node in nodes if node.is_accept]
     alphabet = set()
     for node in nodes:  # making sure this is the alphabet that is actually being used
@@ -142,3 +142,14 @@ def get_trimmed_graph(analog_nodes):
     assert len([node for node in trimmed_graph if node.is_accept]) == len(
         [node for node in analog_nodes if node.is_accept])
     return trimmed_graph
+
+
+def evaluate_graph(X, y, init_node):
+    acc = 0
+    for sent, label in zip(X, y):
+        curr_node = init_node
+        for word in sent:
+            curr_node = curr_node.transitions[word]
+        prediction = curr_node.is_accept
+        acc += (prediction == label)
+    return acc / len(y)

@@ -54,7 +54,7 @@ def get_analog_nodes(train_data, init_state, net):
     return analog_nodes
 
 
-def minimize_graph_by_quantization(states_vectors_pool, init_state, net, train_data, max_k):
+def quantize_graph(states_vectors_pool, init_state, net, train_data, alphabet_idx, max_k):
     """
     returns the nodes of the extracted graph, minimized by quantization.
     we merge the states by quantizing their vectors by using kmeans algorithm - the nodes are the centers
@@ -79,7 +79,7 @@ def minimize_graph_by_quantization(states_vectors_pool, init_state, net, train_d
                     [State(vec) for vec in states_vectors_pool if not np.array_equal(vec, init_state)]
     quantize_states(analog_states, kmeans=kmeans_model)
     start = SearchNode(initial_state)
-    nodes = get_graph(net, start, [0, 1], kmeans_model=kmeans_model)
+    nodes = get_graph(net, start, alphabet_idx, kmeans_model=kmeans_model)
 
     start.state.final = net.is_accept(np.array([start.state.vec]))
     for sent in train_data:
@@ -88,14 +88,14 @@ def minimize_graph_by_quantization(states_vectors_pool, init_state, net, train_d
             next_node = curr_node.transitions[word]
             curr_node = next_node
         curr_node.state.final = net.is_accept(np.array([curr_node.state.vec]))
-    return {node: node.transitions for node in nodes}
+    return {node: node.transitions for node in nodes}, start
 
 
-def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name):
+def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node):
     trimmed_graph = get_trimmed_graph(graph_nodes)
-    print('num of nodes in the ', graph_prefix_name, 'trimmed graph:', len(trimmed_graph))
+    print('num of nodes in the', graph_prefix_name, 'trimmed graph:', len(trimmed_graph))
     print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png')
 
-    reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph})
-    print('num of nodes in the ', graph_prefix_name, 'mn graph:', len(reduced_nodes))
+    reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph}, init_node)
+    print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
     print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png')
