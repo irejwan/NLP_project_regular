@@ -1,6 +1,6 @@
 import random
 import re
-
+from copy import copy
 import rstr
 from random import shuffle
 import numpy as np
@@ -51,28 +51,23 @@ def get_raw_data(DATA_AMOUNT):
 
 def generate_sentences(DATA_AMOUNT):
     """Generate data and return it splitted to train, test and labels"""
-    # raw_x, raw_y = get_simple_pos_data(DATA_AMOUNT)
-    # raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT)
-    raw_x, raw_y = get_raw_data(DATA_AMOUNT)
-    # raw_x, raw_y = get_1_star_2_star(DATA_AMOUNT)
-    percenta = int(DATA_AMOUNT * 0.8)
+    raw_x, raw_y = get_regex_sentences(DATA_AMOUNT)
+
+    percent_train = config.Data.percent_train.float
+    num_train = int(DATA_AMOUNT * percent_train)
     zipped = list(zip(raw_x, raw_y))
     random.shuffle(zipped)
     raw_x, raw_y = zip(*zipped)
     for i, j in zip(raw_x[:5], raw_y[:5]):
         print(i, j)
 
-    X_train = np.array(raw_x[:percenta])
-    y_train = np.array(raw_y[:percenta])
-    X_test = np.array(raw_x[percenta:])
-    y_test = np.array(raw_y[percenta:])
+    X_train = np.array(raw_x[:num_train])
+    y_train = np.array(raw_y[:num_train])
+    X_test = np.array(raw_x[num_train:])
+    y_test = np.array(raw_y[num_train:])
 
     X_train, y_train = zip(*(sorted(zip(X_train, y_train), key=lambda x: len(x[0]))))
     X_test, y_test = zip(*(sorted(zip(X_test, y_test), key=lambda x: len(x[0]))))
-    X_train = np.array([np.array(x) for x in X_train])
-    X_test = np.array([np.array(x) for x in X_test])
-    y_train = np.array([np.array(x) for x in y_train])
-    y_test = np.array([np.array(x) for x in y_test])
     return X_train, y_train, X_test, y_test
 
 
@@ -150,7 +145,7 @@ def generate_simple_english_grammar(num_of_sents, max_seq_len):
     return output
 
 
-def filter_out_sentences_that_match_the_pattern(sent, regex):
+def filter_by_regex(sent, regex):
     pattern = re.compile(regex)
     if pattern.match(sent):
         return False
@@ -171,13 +166,61 @@ def get_simple_pos_data(num_of_sents):
     left = num_of_sents // 2
     while left > 0:
         curr_ungrammaticals = generate_random_strings(max_seq_len, left, [s + ' ' for s in alphabet])
-        filtered = list(filter(lambda sent: filter_out_sentences_that_match_the_pattern(sent, regex),
+        filtered = list(filter(lambda sent: filter_by_regex(sent, regex),
                                curr_ungrammaticals))
         ungrammaticals += [sent.split(' ')[:-1] for sent in filtered]
         left = (num_of_sents // 2) - len(ungrammaticals)
     data = np.array([np.array([alphbet_map[word] for word in sent]) for sent in grammaticals + ungrammaticals])
     labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
     return data, labels
+
+
+def get_regex_sentences(num_sents):
+    max_len = config.Data.max_len.int
+    min_len = config.Data.min_len.int
+
+    alphabet = config.Grammar.alphabet.lst
+    alphabet_map = {a: i for i, a in enumerate(alphabet)}
+    print(alphabet_map)
+
+    regex = '^' + config.Grammar.regex.str + '$'
+    num_stars = regex.count('*')
+    if num_stars == 0:
+        raise Exception('must provide regex that contains at least one *')
+
+    ranges = '{' + str(min_len // num_stars) + ',' + str(max_len // num_stars) + '}'
+    regex = ranges.join(regex.split('*'))
+    grammaticals = [list(rstr.xeger(regex)) for _ in range(num_sents // 2)]
+
+    ungrammaticals = []
+    left = num_sents // 2
+    while left > 0:
+        sample = random.sample(grammaticals, left)
+        curr_ungrammaticals = [random_trans(sentence, alphabet) for sentence in sample]
+        ungrammaticals += list(filter(lambda sent: filter_by_regex(''.join(sent), regex),
+                                      curr_ungrammaticals))
+        left = (num_sents // 2) - len(ungrammaticals)
+
+    data = np.array([np.array([alphabet_map[word] for word in sent]) for sent in grammaticals + ungrammaticals])
+    labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
+    return data, labels
+
+
+def random_trans(sentence, alphabet):
+    result = copy(sentence)
+    num_trans = np.random.randint(1,min(2,len(sentence)))
+    for i in range(num_trans):
+        trans = np.random.randint(2)
+        ind = np.random.randint(len(sentence))
+        if trans == 0:  # deletion
+            result.pop(ind)
+        else:
+            new_char = np.random.choice(alphabet)
+            if trans == 1:  # addition
+                result.insert(ind, new_char)
+            else:   # replacement
+                result[ind] = new_char
+    return result
 
 
 def filter_out_grammatical_sentences(ungrammatical_sent, grammatical_sents):
@@ -210,5 +253,5 @@ def read_conll_pos_file(path):
 
 
 if __name__ == '__main__':
-    generate_sentences(100)
+    print(get_regex_sentences())
     # print(list(zip(*get_simple_pos_data(100))))

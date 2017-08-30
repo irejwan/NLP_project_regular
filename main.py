@@ -7,9 +7,8 @@ from config import Config
 
 config = Config()
 
-DATA_AMOUNT = config.RNN.DATA_AMOUNT.int
+num_sents = config.Data.num_sents.int
 NUM_EPOCHS = config.RNN.NUM_EPOCHS.int
-
 state_size = config.RNN.state_size.int
 init_state = np.zeros(state_size)
 
@@ -87,9 +86,15 @@ def extract_graphs(X):
     print_graph(quantized_nodes, 'quantized_graph_reduced.png')
     retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized')
 
+    plt.scatter(states_vectors_pool[:, 0], states_vectors_pool[:, 1])
+    quantized_vectors = np.array([node.state.vec for node in quantized_nodes])
+    plt.scatter(quantized_vectors[:, 0], quantized_vectors[:, 1], c='r')
+    plt.draw()
+    plt.show()
+
 
 if __name__ == '__main__':
-    X_train, y_train, X_test, y_test = generate_sentences(DATA_AMOUNT)
+    X_train, y_train, X_test, y_test = generate_sentences(num_sents)
     sess = tf.InteractiveSession()
     rnn = RegularRNN(sess)
     sess.run(tf.global_variables_initializer())
