@@ -51,8 +51,9 @@ def get_raw_data(DATA_AMOUNT):
 
 def generate_sentences(DATA_AMOUNT):
     """Generate data and return it splitted to train, test and labels"""
-    raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT)
-    # raw_x, raw_y = get_raw_data(DATA_AMOUNT)
+    # raw_x, raw_y = get_simple_pos_data(DATA_AMOUNT)
+    # raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT)
+    raw_x, raw_y = get_raw_data(DATA_AMOUNT)
     # raw_x, raw_y = get_1_star_2_star(DATA_AMOUNT)
     percenta = int(DATA_AMOUNT * 0.8)
     zipped = list(zip(raw_x, raw_y))
@@ -122,7 +123,7 @@ pos_category_to_num = {cat: i for i, cat in enumerate(sorted(set(pos_category_ma
 
 def get_penn_pos_data(total_num_of_sents):
     grammatical_sents = read_conll_pos_file("../Penn_Treebank/dev.gold.conll")
-    grammaticals = list(grammatical_sents)[:total_num_of_sents//2]
+    grammaticals = list(grammatical_sents)[:total_num_of_sents // 2]
 
     ungrammaticals = []
     left = total_num_of_sents // 2
@@ -158,22 +159,23 @@ def filter_out_sentences_that_match_the_pattern(sent, regex):
 
 def get_simple_pos_data(num_of_sents):
     # todo: read regex from config
-    regex = '^(Det )?(Adj ){0,3}Noun ((Prep )(Det )?(Adj ){0,3}Noun )?V (((Det )?(Adj ){0,3}Noun )((Prep )(Det )?(Adj ){0,3}Noun )?)?$'
+    regex = '^(Det )?(Adj ){0,5}Noun ((Prep )(Det )?(Adj ){0,5}Noun )?' \
+            'V (((Det )?(Adj ){0,5}Noun )((Prep )(Det )?(Adj ){0,5}Noun )?)?$'
     grammaticals = [rstr.xeger(regex).split(' ')[:-1] for _ in range(num_of_sents // 2)]
     max_seq_len = max([len(sent) for sent in grammaticals])
     ungrammaticals = []
-    alphabet = ['Det ', 'Adj ', 'Noun ', 'Prep ', 'V ']
+    alphabet = ['Det', 'Adj', 'Noun', 'Prep', 'V']
     # todo: make it more generic - parse it from regex
     alphbet_map = {a: i for i, a in enumerate(alphabet)}
+    print(alphbet_map)
     left = num_of_sents // 2
     while left > 0:
-        curr_ungrammaticals = generate_random_strings(max_seq_len, left, alphabet)
+        curr_ungrammaticals = generate_random_strings(max_seq_len, left, [s + ' ' for s in alphabet])
         filtered = list(filter(lambda sent: filter_out_sentences_that_match_the_pattern(sent, regex),
-                                      curr_ungrammaticals))
+                               curr_ungrammaticals))
         ungrammaticals += [sent.split(' ')[:-1] for sent in filtered]
         left = (num_of_sents // 2) - len(ungrammaticals)
-    data = grammaticals + ungrammaticals
-    # todo: map to numbers
+    data = np.array([np.array([alphbet_map[word] for word in sent]) for sent in grammaticals + ungrammaticals])
     labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
     return data, labels
 
@@ -208,4 +210,5 @@ def read_conll_pos_file(path):
 
 
 if __name__ == '__main__':
-    print(list(zip(*get_simple_pos_data(100))))
+    generate_sentences(100)
+    # print(list(zip(*get_simple_pos_data(100))))

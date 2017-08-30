@@ -88,9 +88,9 @@ def extract_graphs(X):
     print_graph(reduced_nodes, 'graph_minimized_mn.png')
     print('num of nodes in mn graph:', len(reduced_nodes))
 
-    # states_vectors_pool = [node.state.vec for node in trimmed_graph]
-    # quantized_nodes = minimize_graph_by_quantization(states_vectors_pool, init_state, rnn, max_k=len(reduced_nodes) + 1)
-    # print_graph(quantized_nodes, 'graph_reduced.png')
+    states_vectors_pool = [node.state.vec for node in trimmed_graph]  # todo: analog_nodes
+    quantized_nodes = minimize_graph_by_quantization(states_vectors_pool, init_state, rnn, max_k=len(reduced_nodes) + 1)
+    print_graph(quantized_nodes, 'graph_reduced.png')
 
 
 if __name__ == '__main__':
