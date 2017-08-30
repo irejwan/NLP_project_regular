@@ -79,18 +79,13 @@ def extract_graphs(X):
         node.transitions = analog_nodes[node]
     # print_graph(analog_nodes, 'orig.png')
     print('num of nodes in original graph:', len(analog_nodes))
+    retrieve_minimized_equivalent_graph(analog_nodes, 'orig')
 
-    trimmed_graph = get_trimmed_graph(analog_nodes)
-    print_graph(trimmed_graph, 'trimmed_graph.png')
-    print('num of nodes in trimmed graph:', len(trimmed_graph))
-
-    reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph})
-    print_graph(reduced_nodes, 'graph_minimized_mn.png')
-    print('num of nodes in mn graph:', len(reduced_nodes))
-
-    states_vectors_pool = [node.state.vec for node in trimmed_graph]  # todo: analog_nodes
-    quantized_nodes = minimize_graph_by_quantization(states_vectors_pool, init_state, rnn, max_k=len(reduced_nodes) + 1)
-    print_graph(quantized_nodes, 'graph_reduced.png')
+    states_vectors_pool = [node.state.vec for node in analog_nodes]
+    quantized_nodes = minimize_graph_by_quantization(states_vectors_pool, init_state, rnn, X,
+                                                     max_k=int(len(analog_nodes)**0.5))
+    print_graph(quantized_nodes, 'quantized_graph_reduced.png')
+    retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized')
 
 
 if __name__ == '__main__':
@@ -99,6 +94,6 @@ if __name__ == '__main__':
     rnn = RegularRNN(sess)
     sess.run(tf.global_variables_initializer())
     correct = train(X_train, y_train, X_test, y_test, sess, rnn)
-    print(len(correct))
+    print('num of strings classified correctly by the net: ', len(correct))
     extract_graphs(correct)
     # end

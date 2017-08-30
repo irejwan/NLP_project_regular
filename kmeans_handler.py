@@ -19,7 +19,7 @@ def get_best_kmeans_model(X, max_k):
     # todo: maybe we should use this code instead of implementing it ourselves:
     # https://github.com/mynameisfiber/pyxmeans/blob/master/pyxmeans/xmeans.py
 
-    kmeans_models = [KMeans(n_clusters=k).fit(X) for k in range(1, min(max_k, 70))]
+    kmeans_models = [KMeans(n_clusters=k).fit(X) for k in range(1, max_k)]
     best_bic = np.argmax([compute_bic(model, X) for model in kmeans_models])
     return kmeans_models[best_bic]
 

@@ -7,6 +7,7 @@ from config import Config
 
 config = Config()
 
+
 def print_graph(nodes_list, graph_name):
     graph = pydot.Dot(graph_type='digraph')
     nodes_dict = dict()

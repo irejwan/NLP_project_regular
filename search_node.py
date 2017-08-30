@@ -26,7 +26,7 @@ class SearchNode(object):
     def is_accept(self):
         return self.__state.final
 
-    def get_next_nodes(self, net, alphabet, kmeans_model=None):
+    def get_next_nodes(self, net, alphabet, old_to_new_nodes, kmeans_model=None):
         next_nodes = set()
         for char in alphabet:
             next_state_analog = net.get_next_state(list(self.__state.quantized), char)
@@ -38,11 +38,11 @@ class SearchNode(object):
             next_state = State(next_state_quantized, next_state_quantized)
 
             next_node = SearchNode(next_state)
+            if next_node not in old_to_new_nodes:
+                old_to_new_nodes[next_node] = next_node
+            next_node = old_to_new_nodes[next_node]
             self.__transitions[char] = next_node
             next_nodes.add(next_node)
-
-            if char == 'e' and next_state.legal:
-                next_state.final = True
         return next_nodes
 
     def __eq__(self, other):
