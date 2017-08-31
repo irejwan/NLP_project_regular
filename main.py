@@ -86,11 +86,11 @@ def extract_graphs(X):
     print_graph(quantized_nodes, 'quantized_graph_reduced.png')
     retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized')
 
-    plt.scatter(states_vectors_pool[:, 0], states_vectors_pool[:, 1])
-    quantized_vectors = np.array([node.state.vec for node in quantized_nodes])
-    plt.scatter(quantized_vectors[:, 0], quantized_vectors[:, 1], c='r')
-    plt.draw()
-    plt.show()
+    # plt.scatter(states_vectors_pool[:, 0], states_vectors_pool[:, 1])
+    # quantized_vectors = np.array([node.state.vec for node in quantized_nodes])
+    # plt.scatter(quantized_vectors[:, 0], quantized_vectors[:, 1], c='r')
+    # plt.draw()
+    # plt.show()
 
 
 if __name__ == '__main__':

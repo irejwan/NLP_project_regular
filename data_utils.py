@@ -12,9 +12,9 @@ config = Config()
 
 def get_raw_data(DATA_AMOUNT):
     """Generate regex data - 50% grammatical and 50% ungrammatical"""
-    max_sentence_length = config.Grammar.max_sentence_length.int
-    min_sentence_length = config.Grammar.min_sentence_length.int
-    semi_regex = config.Grammar.regular_expression.str
+    max_sentence_length = config.Data.max_len.int
+    min_sentence_length = config.Data.min_len.int
+    semi_regex = config.Grammar.regex.str
     regex = semi_regex + '{' + str(min_sentence_length) + ',' + str(max_sentence_length) + '}'
     alphabet = config.Grammar.alphabet.lst
 

@@ -1,3 +1,5 @@
+from sklearn.manifold import SpectralEmbedding
+
 from config import Config
 from kmeans_handler import *
 from utils import *
@@ -73,7 +75,7 @@ def minimize_graph_by_quantization(states_vectors_pool, init_state, net, train_d
     # plt.scatter(kmeans_model.cluster_centers_[:, 0], kmeans_model.cluster_centers_[:, 1], c='r')
     # plt.draw()
     # plt.show()
-
+    # todo: remove init state from k-means quantization
     initial_state = State(init_state)
     analog_states = [initial_state] + \
                     [State(vec) for vec in states_vectors_pool if not np.array_equal(vec, init_state)]
@@ -92,6 +94,7 @@ def minimize_graph_by_quantization(states_vectors_pool, init_state, net, train_d
 
 
 def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name):
+    # todo: fix the "DAG" bug
     trimmed_graph = get_trimmed_graph(graph_nodes)
     print('num of nodes in the ', graph_prefix_name, 'trimmed graph:', len(trimmed_graph))
     print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png')
@@ -99,3 +102,15 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name):
     reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph})
     print('num of nodes in the ', graph_prefix_name, 'mn graph:', len(reduced_nodes))
     print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png')
+
+    all_nodes = list(trimmed_graph.keys())
+    all_states = [node.state.vec for node in all_nodes]
+    representatives = set([node.representative for node in trimmed_graph])
+    representatives_colors_map = {rep: i for i, rep in enumerate(representatives)}
+    colors = [representatives_colors_map[node.representative] for node in all_nodes]
+
+    le = SpectralEmbedding(n_components=2, n_neighbors=10)
+    le_X = le.fit_transform(all_states)
+    plt.scatter(le_X[:, 0], le_X[:, 1], c=colors)
+    plt.draw()
+    plt.show()
