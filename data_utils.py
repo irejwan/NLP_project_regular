@@ -12,6 +12,7 @@ config = Config()
 def generate_sentences(DATA_AMOUNT, alphabet_map):
     """Generate data and return it splitted to train, test and labels"""
     raw_x, raw_y = get_regex_sentences(DATA_AMOUNT, alphabet_map)
+    # raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT)
 
     percent_train = config.Data.percent_train.float
     num_train = int(DATA_AMOUNT * percent_train)
@@ -52,15 +53,31 @@ pos_category_map = \
 pos_category_to_num = {cat: i for i, cat in enumerate(sorted(set(pos_category_map.values())))}
 
 
+def filter_out_by_allowed_pos(sent):
+    allowed_pos = [pos_category_to_num[pos] for pos in ['N', 'V', 'J', 'A', 'D', 'S', 'I', 'T']]
+    for pos in sent:
+        if pos not in allowed_pos:
+            return False
+    return True
+
+
 def get_penn_pos_data(total_num_of_sents):
-    grammatical_sents = read_conll_pos_file("../Penn_Treebank/dev.gold.conll")
-    grammaticals = list(grammatical_sents)[:total_num_of_sents // 2]
+    print(pos_category_to_num)
+    grammatical_sents = read_conll_pos_file("../Penn_Treebank/train.gold.conll")
+    grammaticals = []
+    left = total_num_of_sents // 2
+    curr_idx = 0
+    while left > 0 and curr_idx < len(grammatical_sents):
+        curr_grammaticals = list(grammatical_sents)[curr_idx:curr_idx + left]
+        grammaticals += list(filter(filter_out_by_allowed_pos, curr_grammaticals))
+        curr_idx += left
+        left = (total_num_of_sents // 2) - len(grammaticals)
 
     ungrammaticals = []
     left = total_num_of_sents // 2
-    alphabet = list(pos_category_to_num.keys())
+    alphabet = list(set(pos_category_to_num.keys()).intersection({'N', 'V', 'J', 'A', 'D', 'S', 'I', 'T'}))
     while left > 0:
-        curr_ungrammaticals = generate_random_strings(config.Grammar.max_sentence_length.int, left, alphabet)
+        curr_ungrammaticals = generate_random_strings(config.Data.max_len.int, left, alphabet)
         curr_ungrammaticals = list(map(lambda sent: [pos_category_to_num[s] for s in list(sent)], curr_ungrammaticals))
         ungrammaticals += list(filter(lambda sent: filter_out_grammatical_sentences(sent, grammatical_sents),
                                       curr_ungrammaticals))
@@ -123,7 +140,7 @@ def get_regex_sentences(num_sents, alphabet_map):
 
 def random_trans(sentence, alphabet):
     result = copy(sentence)
-    num_trans = np.random.randint(1,min(2,len(sentence)))
+    num_trans = np.random.randint(1, min(2, len(sentence)))
     for i in range(num_trans):
         trans = np.random.randint(2)
         ind = np.random.randint(len(sentence))
@@ -133,7 +150,7 @@ def random_trans(sentence, alphabet):
             new_char = np.random.choice(alphabet)
             if trans == 1:  # addition
                 result.insert(ind, new_char)
-            else:   # replacement
+            else:  # replacement
                 result[ind] = new_char
     return result
 
@@ -165,4 +182,3 @@ def read_conll_pos_file(path):
                 pos = tokens[3]
                 curr.append(get_pos_num(pos))
     return sents
-

@@ -33,15 +33,14 @@ def quantize_state(state, kmeans=None):
         state.quantized = State.quantize_vec(state.vec, config.States.intervals_num.int)
 
 
-def get_analog_nodes(train_data, init_state, net):
+def get_analog_nodes(train_data, init_node, net):
     """
     get all possible states that the net returns for the training data.
     :param train_data: the training data
-    :param init_state: the initial state (we start from this state for each input sentence)
+    :param init_node: the initial state (we start from this state for each input sentence)
     :return: all possible nodes, including transitions to the next nodes.
     """
 
-    init_node = SearchNode(State(init_state, quantized=tuple(init_state)))
     init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
     analog_nodes = {init_node: {}}
     for sent in train_data:
@@ -72,16 +71,10 @@ def quantize_graph(states_vectors_pool, init_state, net, train_data, alphabet_id
 
     kmeans_model = get_best_kmeans_model(states_vectors_pool, max_k)
     print(kmeans_model.cluster_centers_.shape)
-    # plt.scatter(states_vectors_pool[:, 0], states_vectors_pool[:, 1])
-    # plt.scatter(kmeans_model.cluster_centers_[:, 0], kmeans_model.cluster_centers_[:, 1], c='r')
-    # plt.draw()
-    # plt.show()
-    # todo: remove init state from k-means quantization
-    initial_state = State(init_state)
-    analog_states = [initial_state] + \
-                    [State(vec) for vec in states_vectors_pool if not np.array_equal(vec, init_state)]
+
+    analog_states = [State(vec) for vec in states_vectors_pool if not np.array_equal(vec, init_state)] # [initial_state]
     quantize_states(analog_states, kmeans=kmeans_model)
-    start = SearchNode(initial_state)
+    start = SearchNode(State(init_state))
     nodes = get_graph(net, start, alphabet_idx, kmeans_model=kmeans_model)
 
     start.state.final = net.is_accept(np.array([start.state.vec]))
@@ -95,7 +88,6 @@ def quantize_graph(states_vectors_pool, init_state, net, train_data, alphabet_id
 
 
 def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node):
-    # todo: fix the "DAG" bug
     trimmed_graph = get_trimmed_graph(graph_nodes)
     print('num of nodes in the', graph_prefix_name, 'trimmed graph:', len(trimmed_graph))
     print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png')
@@ -104,14 +96,15 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
     print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
     print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png')
 
-    all_nodes = list(trimmed_graph.keys())
-    all_states = [node.state.vec for node in all_nodes]
-    representatives = set([node.representative for node in trimmed_graph])
-    representatives_colors_map = {rep: i for i, rep in enumerate(representatives)}
-    colors = [representatives_colors_map[node.representative] for node in all_nodes]
+    if len(trimmed_graph) > 0:
+        all_nodes = list(trimmed_graph)  # we cast the set into a list, so we'll keep the order
+        all_states = [node.state.vec for node in all_nodes]
+        representatives = set([node.representative for node in trimmed_graph])
+        representatives_colors_map = {rep: i for i, rep in enumerate(representatives)}
+        colors = [representatives_colors_map[node.representative] for node in all_nodes]
 
-    le = SpectralEmbedding(n_components=2, n_neighbors=10)
-    le_X = le.fit_transform(all_states)
-    plt.scatter(le_X[:, 0], le_X[:, 1], c=colors)
-    plt.draw()
-    plt.show()
+        le = SpectralEmbedding(n_components=2, n_neighbors=10)
+        le_X = le.fit_transform(all_states)
+        plt.scatter(le_X[:, 0], le_X[:, 1], c=colors)
+        plt.draw()
+        plt.show()
