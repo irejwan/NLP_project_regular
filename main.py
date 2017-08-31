@@ -17,6 +17,7 @@ def train(X_train, y_train, X_test, y_test, sess, rnn):
     merged = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter('board', sess.graph)
     correct = []
+    correct_labels = []
 
     print("Start learning...")
     for epoch in range(NUM_EPOCHS):
@@ -54,6 +55,7 @@ def train(X_train, y_train, X_test, y_test, sess, rnn):
 
             if epoch == NUM_EPOCHS - 1 and acc == 1:
                 correct.append(sentence)
+                correct_labels.append(label)
 
         accuracy_test /= len(y_test)
         loss_test /= len(y_test)
@@ -63,10 +65,10 @@ def train(X_train, y_train, X_test, y_test, sess, rnn):
         ))
 
     train_writer.close()
-    return correct
+    return correct, correct_labels
 
 
-def extract_graphs(X):
+def extract_graphs(X, y):
     """
     after the net has trained enough, we calculate the states returned and print the graphs of them.
     :param X: the training data
@@ -78,27 +80,26 @@ def extract_graphs(X):
         node.transitions = analog_nodes[node]
     # print_graph(analog_nodes, 'orig.png')
     print('num of nodes in original graph:', len(analog_nodes))
-    retrieve_minimized_equivalent_graph(analog_nodes, 'orig')
+    # retrieve_minimized_equivalent_graph(analog_nodes, 'orig')
 
     states_vectors_pool = [node.state.vec for node in analog_nodes]
-    quantized_nodes = minimize_graph_by_quantization(states_vectors_pool, init_state, rnn, X,
-                                                     max_k=int(len(analog_nodes)**0.5))
+    quantized_nodes, init_node = quantize_graph(states_vectors_pool, init_state, rnn, X,
+                                                alphabet_map.values(), max_k=int(len(analog_nodes)**0.5))
+    acc = evaluate_graph(X, y, init_node)
+    print('quantized graph is correct in {:.1f}% of the sentences classified correctly by the RNN'.format(acc*100))
     print_graph(quantized_nodes, 'quantized_graph_reduced.png')
-    retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized')
-
-    # plt.scatter(states_vectors_pool[:, 0], states_vectors_pool[:, 1])
-    # quantized_vectors = np.array([node.state.vec for node in quantized_nodes])
-    # plt.scatter(quantized_vectors[:, 0], quantized_vectors[:, 1], c='r')
-    # plt.draw()
-    # plt.show()
+    retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized', init_node)
 
 
 if __name__ == '__main__':
-    X_train, y_train, X_test, y_test = generate_sentences(num_sents)
+    alphabet = config.Grammar.alphabet.lst
+    alphabet_map = {a: i for i, a in enumerate(alphabet)}
+    print(alphabet_map)
+
+    X_train, y_train, X_test, y_test = generate_sentences(num_sents, alphabet_map)
     sess = tf.InteractiveSession()
     rnn = RegularRNN(sess)
     sess.run(tf.global_variables_initializer())
-    correct = train(X_train, y_train, X_test, y_test, sess, rnn)
+    correct, correct_labels = train(X_train, y_train, X_test, y_test, sess, rnn)
     print('num of strings classified correctly by the net: ', len(correct))
-    extract_graphs(correct)
-    # end
+    extract_graphs(correct, correct_labels)
