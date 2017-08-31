@@ -68,7 +68,7 @@ def train(X_train, y_train, X_test, y_test, sess, rnn):
     return correct, correct_labels
 
 
-def extract_graphs(X, y):
+def extract_graphs(X, y, inv_alphabet_map):
     """
     after the net has trained enough, we calculate the states returned and print the graphs of them.
     :param X: the training data
@@ -82,7 +82,7 @@ def extract_graphs(X, y):
         node.transitions = analog_nodes[node]
     # print_graph(analog_nodes, 'orig.png')
     print('num of nodes in original graph:', len(analog_nodes))
-    retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node)
+    retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node, inv_alphabet_map)
 
     states_vectors_pool = [node.state.vec for node in analog_nodes]
     quantized_nodes, init_node = quantize_graph(states_vectors_pool, init_state, rnn, X,
@@ -90,13 +90,15 @@ def extract_graphs(X, y):
                                                 max_k=int(len(analog_nodes)**0.6))
     acc = evaluate_graph(X, y, init_node)
     print('quantized graph is correct in {:.1f}% of the sentences classified correctly by the RNN'.format(acc*100))
-    print_graph(quantized_nodes, 'quantized_graph_reduced.png')
-    retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized', init_node)
+    print_graph(quantized_nodes, 'quantized_graph_reduced.png', inv_alphabet_map)
+    retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized', init_node, inv_alphabet_map)
 
 
 if __name__ == '__main__':
     alphabet = config.Grammar.alphabet.lst
     alphabet_map = {a: i for i, a in enumerate(alphabet)}
+    inv_alphabet_map = {v: k for k, v in alphabet_map.items()}
+
     # print(alphabet_map)
 
     X_train, y_train, X_test, y_test = generate_sentences(num_sents, alphabet_map)
@@ -105,4 +107,4 @@ if __name__ == '__main__':
     sess.run(tf.global_variables_initializer())
     correct, correct_labels = train(X_train, y_train, X_test, y_test, sess, rnn)
     print('num of strings classified correctly by the net: ', len(correct))
-    extract_graphs(correct, correct_labels)
+    extract_graphs(correct, correct_labels, inv_alphabet_map)

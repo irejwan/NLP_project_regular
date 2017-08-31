@@ -92,14 +92,14 @@ def quantize_graph(states_vectors_pool, init_state, net, train_data, alphabet_id
     return {node: node.transitions for node in nodes}, start
 
 
-def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node):
+def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, inv_alphabet_map):
     trimmed_graph = get_trimmed_graph(graph_nodes)
     print('num of nodes in the', graph_prefix_name, 'trimmed graph:', len(trimmed_graph))
-    print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png')
+    print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png', inv_alphabet_map)
 
     reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph}, init_node)
     print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
-    print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png')
+    print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png', inv_alphabet_map)
 
     if len(trimmed_graph) > 0:
         all_nodes = list(trimmed_graph)  # we cast the set into a list, so we'll keep the order

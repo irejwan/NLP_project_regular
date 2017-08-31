@@ -8,7 +8,7 @@ from config import Config
 config = Config()
 
 
-def print_graph(nodes_list, graph_name):
+def print_graph(nodes_list, graph_name, inv_alphabet_map):
     graph = pydot.Dot(graph_type='digraph')
     nodes_dict = dict()
     i = 0
@@ -24,7 +24,7 @@ def print_graph(nodes_list, graph_name):
         trans = state.transitions
         for input in trans.keys():
             next_state = trans[input]
-            graph.add_edge(pydot.Edge(nodes_dict[state], nodes_dict[next_state], label=str(int(input))))
+            graph.add_edge(pydot.Edge(nodes_dict[state], nodes_dict[next_state], label=str(inv_alphabet_map[input])))
     graph.write_png(graph_name)
 
 
