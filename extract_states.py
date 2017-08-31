@@ -3,6 +3,7 @@ from sklearn.manifold import SpectralEmbedding
 from config import Config
 from sklearn.manifold import SpectralEmbedding
 from kmeans_handler import *
+from meanshift_handler import *
 from utils import *
 import matplotlib.pyplot as plt
 
@@ -68,14 +69,18 @@ def quantize_graph(states_vectors_pool, init_state, net, train_data, alphabet_id
     :return: the nodes of the minimized graph.
     """
     states_vectors_pool = np.array(states_vectors_pool)
+    clustering_model = config.ClusteringModel.model.str
+    if clustering_model == 'k_means':
+        trained_clustering_model = get_best_kmeans_model(states_vectors_pool, max_k)
+    else:
+        trained_clustering_model = get_best_meanshift_model(states_vectors_pool)
 
-    kmeans_model = get_best_kmeans_model(states_vectors_pool, max_k)
-    print(kmeans_model.cluster_centers_.shape)
+    print(trained_clustering_model.cluster_centers_.shape)
 
     analog_states = [State(vec) for vec in states_vectors_pool if not np.array_equal(vec, init_state)] # [initial_state]
-    quantize_states(analog_states, kmeans=kmeans_model)
+    quantize_states(analog_states, kmeans=trained_clustering_model)
     start = SearchNode(State(init_state))
-    nodes = get_graph(net, start, alphabet_idx, kmeans_model=kmeans_model)
+    nodes = get_graph(net, start, alphabet_idx, kmeans_model=trained_clustering_model)
 
     start.state.final = net.is_accept(np.array([start.state.vec]))
     for sent in train_data:
