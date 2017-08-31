@@ -265,6 +265,8 @@ class DFA:
         # Step 3: Construct the new DFA
         self.collapse(classes)
 
+        return classes
+
     def preamble_and_kernel(self):
         """Returns the partition of the state-set into the preamble and 
         kernel as a 2-tuple. A state is in the preamble iff there 

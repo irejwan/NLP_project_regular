@@ -9,6 +9,7 @@ class SearchNode(object):
     def __init__(self, node_state):
         self.__state = node_state
         self.__transitions = dict()
+        self.__representative = None  # MN representative
 
     @property
     def state(self):
@@ -25,6 +26,14 @@ class SearchNode(object):
     @property
     def is_accept(self):
         return self.__state.final
+
+    @property
+    def representative(self):
+        return self.__representative
+
+    @representative.setter
+    def representative(self, value):
+        self.__representative = value
 
     def get_next_nodes(self, net, alphabet, old_to_new_nodes, kmeans_model=None):
         next_nodes = set()

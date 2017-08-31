@@ -1,6 +1,8 @@
+from sklearn.manifold import SpectralEmbedding
+
 from config import Config
+from sklearn.manifold import SpectralEmbedding
 from kmeans_handler import *
-from meanshift_handler import *
 from utils import *
 import matplotlib.pyplot as plt
 
@@ -31,15 +33,14 @@ def quantize_state(state, kmeans=None):
         state.quantized = State.quantize_vec(state.vec, config.States.intervals_num.int)
 
 
-def get_analog_nodes(train_data, init_state, net):
+def get_analog_nodes(train_data, init_node, net):
     """
     get all possible states that the net returns for the training data.
     :param train_data: the training data
-    :param init_state: the initial state (we start from this state for each input sentence)
+    :param init_node: the initial state (we start from this state for each input sentence)
     :return: all possible nodes, including transitions to the next nodes.
     """
 
-    init_node = SearchNode(State(init_state, quantized=tuple(init_state)))
     init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
     analog_nodes = {init_node: {}}
     for sent in train_data:
@@ -68,23 +69,13 @@ def quantize_graph(states_vectors_pool, init_state, net, train_data, alphabet_id
     """
     states_vectors_pool = np.array(states_vectors_pool)
 
-    clustering_model = config.ClusteringModel.model.str
-    if clustering_model == 'k_means':
-        trained_clustering_model = get_best_kmeans_model(states_vectors_pool, max_k)
-    else:
-        trained_clustering_model = get_best_meanshift_model(states_vectors_pool)
-    print(trained_clustering_model.cluster_centers_.shape)
-    # plt.scatter(states_vectors_pool[:, 0], states_vectors_pool[:, 1])
-    # plt.scatter(trained_clustering_model.cluster_centers_[:, 0], trained_clustering_model.cluster_centers_[:, 1], c='r')
-    # plt.draw()
-    # plt.show()
+    kmeans_model = get_best_kmeans_model(states_vectors_pool, max_k)
+    print(kmeans_model.cluster_centers_.shape)
 
-    initial_state = State(init_state)
-    analog_states = [initial_state] + \
-                    [State(vec) for vec in states_vectors_pool if not np.array_equal(vec, init_state)]
-    quantize_states(analog_states, kmeans=trained_clustering_model)
-    start = SearchNode(initial_state)
-    nodes = get_graph(net, start, alphabet_idx, kmeans_model=trained_clustering_model)
+    analog_states = [State(vec) for vec in states_vectors_pool if not np.array_equal(vec, init_state)] # [initial_state]
+    quantize_states(analog_states, kmeans=kmeans_model)
+    start = SearchNode(State(init_state))
+    nodes = get_graph(net, start, alphabet_idx, kmeans_model=kmeans_model)
 
     start.state.final = net.is_accept(np.array([start.state.vec]))
     for sent in train_data:
@@ -104,3 +95,16 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
     reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph}, init_node)
     print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
     print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png')
+
+    if len(trimmed_graph) > 0:
+        all_nodes = list(trimmed_graph)  # we cast the set into a list, so we'll keep the order
+        all_states = [node.state.vec for node in all_nodes]
+        representatives = set([node.representative for node in trimmed_graph])
+        representatives_colors_map = {rep: i for i, rep in enumerate(representatives)}
+        colors = [representatives_colors_map[node.representative] for node in all_nodes]
+
+        le = SpectralEmbedding(n_components=2, n_neighbors=10)
+        le_X = le.fit_transform(all_states)
+        plt.scatter(le_X[:, 0], le_X[:, 1], c=colors)
+        plt.draw()
+        plt.show()

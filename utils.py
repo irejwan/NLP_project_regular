@@ -49,7 +49,11 @@ def minimize_dfa(nodes, start):
         return nodes[state].get(char, fail_state)  # return fail state in case no transition is set
 
     d = DFA.DFA(states=states, start=start, accepts=accepts, alphabet=alphabet, delta=delta)
-    d.minimize()
+    eq_classes = d.minimize()
+    for state_class in eq_classes:  # updating the nodes MN representatives
+        representative = state_class[0]
+        for node in state_class:
+            node.representative = representative
 
     # update the node's transitions by the new delta function of the minimized DFA
     for node in d.states:

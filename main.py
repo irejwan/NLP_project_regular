@@ -72,19 +72,22 @@ def extract_graphs(X, y):
     """
     after the net has trained enough, we calculate the states returned and print the graphs of them.
     :param X: the training data
+    :param y: the labels
     :return: nothing
     """
-    analog_nodes = get_analog_nodes(X, init_state, rnn)
+    init_node = SearchNode(State(init_state, quantized=tuple(init_state)))
+    analog_nodes = get_analog_nodes(X, init_node, rnn)
 
     for node in analog_nodes:
         node.transitions = analog_nodes[node]
     # print_graph(analog_nodes, 'orig.png')
     print('num of nodes in original graph:', len(analog_nodes))
-    # retrieve_minimized_equivalent_graph(analog_nodes, 'orig')
+    retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node)
 
     states_vectors_pool = [node.state.vec for node in analog_nodes]
     quantized_nodes, init_node = quantize_graph(states_vectors_pool, init_state, rnn, X,
-                                                alphabet_map.values(), max_k=int(len(analog_nodes)**0.5))
+                                                alphabet_map.values(),
+                                                max_k=int(len(analog_nodes)**0.6))
     acc = evaluate_graph(X, y, init_node)
     print('quantized graph is correct in {:.1f}% of the sentences classified correctly by the RNN'.format(acc*100))
     print_graph(quantized_nodes, 'quantized_graph_reduced.png')
@@ -94,7 +97,7 @@ def extract_graphs(X, y):
 if __name__ == '__main__':
     alphabet = config.Grammar.alphabet.lst
     alphabet_map = {a: i for i, a in enumerate(alphabet)}
-    print(alphabet_map)
+    # print(alphabet_map)
 
     X_train, y_train, X_test, y_test = generate_sentences(num_sents, alphabet_map)
     sess = tf.InteractiveSession()
