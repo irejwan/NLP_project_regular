@@ -4,6 +4,7 @@ from data_utils import generate_sentences
 from regular_rnn import RegularRNN
 import tensorflow as tf
 from config import Config
+from sklearn.cluster import KMeans
 
 config = Config()
 
@@ -68,6 +69,41 @@ def train(X_train, y_train, X_test, y_test, sess, rnn):
     return correct, correct_labels
 
 
+def get_kmeans(states_vector_pool, init_state, net, X, y, alphabet_idx, min_k=1):
+    print('working on k-means')
+    curr_k = min_k
+    curr_model = KMeans(n_clusters=curr_k).fit(states_vector_pool)
+    quantized_nodes, init_node = get_quantized_graph(states_vector_pool, init_state, net, X, alphabet_idx, curr_model)
+    acc = evaluate_graph(X, y, init_node)
+    history = []
+    while acc < 1:
+        curr_k *= 2
+        curr_model = KMeans(n_clusters=curr_k).fit(states_vector_pool)
+        quantized_nodes, init_node = get_quantized_graph(states_vector_pool, init_state, net, X, alphabet_idx, curr_model)
+        acc = evaluate_graph(X, y, init_node)
+        history.append((curr_k, acc))
+        print('k =', curr_k, 'acc =', acc)
+    max_k = curr_k
+
+    print('k_max = {} and k_min = {}'.format(max_k, min_k))
+    history = []
+    while max_k - min_k > 1:
+        curr_k = min_k + (max_k - min_k) // 2
+        curr_model = KMeans(n_clusters=curr_k).fit(states_vector_pool)
+        quantized_nodes, init_node = get_quantized_graph(states_vector_pool, init_state, net, X, alphabet_idx, curr_model)
+        acc = evaluate_graph(X, y, init_node)
+        history.append((curr_k, acc))
+        print('k =', curr_k, 'acc =', acc)
+        if acc == 1:
+            max_k = curr_k
+        else:
+            min_k = curr_k
+    print('finished. best k is:', curr_k)
+    plt.scatter(*zip(*history))
+    plt.show()
+    return curr_model
+
+
 def extract_graphs(X, y, inv_alphabet_map):
     """
     after the net has trained enough, we calculate the states returned and print the graphs of them.
@@ -82,12 +118,18 @@ def extract_graphs(X, y, inv_alphabet_map):
         node.transitions = analog_nodes[node]
     # print_graph(analog_nodes, 'orig.png')
     print('num of nodes in original graph:', len(analog_nodes))
-    retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node, inv_alphabet_map)
+    mn_size = retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node, inv_alphabet_map)
 
     states_vectors_pool = [node.state.vec for node in analog_nodes]
-    quantized_nodes, init_node = quantize_graph(states_vectors_pool, init_state, rnn, X,
-                                                alphabet_map.values(),
-                                                max_k=int(len(analog_nodes)**0.6))
+    cluster_model = get_kmeans(states_vectors_pool, init_state, rnn, X, y,
+                               list(inv_alphabet_map.keys()), min_k=mn_size)
+    print(cluster_model.cluster_centers_.shape)
+    le = PCA(n_components=2)
+    le_X = le.fit_transform(states_vectors_pool)
+    plt.scatter(le_X[:, 0], le_X[:, 1], c=cluster_model.predict(states_vectors_pool))
+    plt.show()
+    quantized_nodes, init_node = get_quantized_graph(states_vectors_pool, init_state, rnn,
+                                                     X, list(inv_alphabet_map.keys()), cluster_model)
     acc = evaluate_graph(X, y, init_node)
     print('quantized graph is correct in {:.1f}% of the sentences classified correctly by the RNN'.format(acc*100))
     print_graph(quantized_nodes, 'quantized_graph_reduced.png', inv_alphabet_map)

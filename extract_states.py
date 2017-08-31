@@ -1,5 +1,5 @@
 from sklearn.manifold import SpectralEmbedding
-
+from sklearn.decomposition import PCA
 from config import Config
 from sklearn.manifold import SpectralEmbedding
 from kmeans_handler import *
@@ -71,16 +71,27 @@ def quantize_graph(states_vectors_pool, init_state, net, train_data, alphabet_id
     states_vectors_pool = np.array(states_vectors_pool)
     clustering_model = config.ClusteringModel.model.str
     if clustering_model == 'k_means':
-        trained_clustering_model = get_best_kmeans_model(states_vectors_pool, max_k)
+        cluster_model = get_best_kmeans_model(states_vectors_pool, max_k)
     else:
-        trained_clustering_model = get_best_meanshift_model(states_vectors_pool)
+        cluster_model = get_best_meanshift_model(states_vectors_pool)
 
-    print(trained_clustering_model.cluster_centers_.shape)
+    print(cluster_model.cluster_centers_.shape)
 
-    analog_states = [State(vec) for vec in states_vectors_pool if not np.array_equal(vec, init_state)] # [initial_state]
-    quantize_states(analog_states, kmeans=trained_clustering_model)
+    le = PCA(n_components=2)
+    le_X = le.fit_transform(states_vectors_pool)
+    plt.scatter(le_X[:, 0], le_X[:, 1], c=cluster_model.predict(states_vectors_pool))
+    plt.draw()
+    plt.show()
+
+    return get_quantized_graph(states_vectors_pool, init_state, net, train_data, alphabet_idx, cluster_model)
+
+
+def get_quantized_graph(states_vectors_pool, init_state, net, train_data, alphabet_idx, cluster_model):
+    analog_states = [State(vec) for vec in states_vectors_pool if
+                     not np.array_equal(vec, init_state)]  # [initial_state]
+    quantize_states(analog_states, kmeans=cluster_model)
     start = SearchNode(State(init_state))
-    nodes = get_graph(net, start, alphabet_idx, kmeans_model=trained_clustering_model)
+    nodes = get_graph(net, start, alphabet_idx, kmeans_model=cluster_model)
 
     start.state.final = net.is_accept(np.array([start.state.vec]))
     for sent in train_data:
@@ -95,6 +106,11 @@ def quantize_graph(states_vectors_pool, init_state, net, train_data, alphabet_id
 def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, inv_alphabet_map):
     trimmed_graph = get_trimmed_graph(graph_nodes)
     print('num of nodes in the', graph_prefix_name, 'trimmed graph:', len(trimmed_graph))
+
+    if len(trimmed_graph) > 300:
+        print('trimmed graph too big, skipping MN')
+        return 1
+
     print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png', inv_alphabet_map)
 
     reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph}, init_node)
@@ -108,8 +124,10 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
         representatives_colors_map = {rep: i for i, rep in enumerate(representatives)}
         colors = [representatives_colors_map[node.representative] for node in all_nodes]
 
-        le = SpectralEmbedding(n_components=2, n_neighbors=10)
+        le = PCA(n_components=2)
         le_X = le.fit_transform(all_states)
         plt.scatter(le_X[:, 0], le_X[:, 1], c=colors)
         plt.draw()
         plt.show()
+
+    return len(reduced_nodes)
