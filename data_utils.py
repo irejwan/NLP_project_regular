@@ -8,11 +8,28 @@ from PCFG import PCFG
 
 config = Config()
 
+pos_category_map = \
+    {
+        'NN': 'N', 'NNS': 'N', 'NNP': 'N', 'NNPS': 'N', 'PRP$': 'N', 'PRP': 'N', 'WP': 'N', 'WP$': 'N',
+        'MD': 'V', 'VB': 'V', 'VBC': 'V', 'VBD': 'V', 'VBF': 'V', 'VBG': 'V', 'VBN': 'V', 'VBP': 'V',
+        'VBZ': 'V',
+        'JJ': 'J', 'JJR': 'J', 'JJS': 'J', 'LS': 'J', 'RB': 'A', 'RBR': 'A', 'RBS': 'A', 'WRB': 'A',
+        'DT': 'D', 'PDT': 'D', 'WDT': 'D',
+        'SYM': 'S', 'POS': 'S', '-LRB-': 'S', '-RRB-': 'S', ',': 'S', '-': 'S', ':': 'S', ';': 'S', '.': 'S',
+        '``': 'S',
+        '"': 'S', '$': 'S', "''": 'S', '#': 'S',
+        'CD': 'C', 'DAT': 'X', 'CC': 'B', 'EX': 'E', 'FW': 'F', 'IN': 'I', 'RP': 'R', 'TO': 'T',
+        'UH': 'U'
+    }
+pos_category_to_num = {cat: i for i, cat in enumerate(sorted(set(pos_category_map.values())))}
 
-def generate_sentences(DATA_AMOUNT, alphabet_map):
+
+def generate_sentences(DATA_AMOUNT, alphabet_map, type):
     """Generate data and return it splitted to train, test and labels"""
-    raw_x, raw_y = get_regex_sentences(DATA_AMOUNT, alphabet_map)
-    # raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT)
+    if type == 'ptb':
+        raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT, alphabet_map)
+    else:
+        raw_x, raw_y = get_regex_sentences(DATA_AMOUNT, alphabet_map)
 
     percent_train = config.Data.percent_train.float
     num_train = int(DATA_AMOUNT * percent_train)
@@ -37,48 +54,33 @@ def generate_random_strings(max_length, num_of_sents, alphabet):
     return [rstr.rstr(alphabet, length) for length in random_lengths]
 
 
-pos_category_map = \
-    {
-        'NN': 'N', 'NNS': 'N', 'NNP': 'N', 'NNPS': 'N', 'PRP$': 'N', 'PRP': 'N', 'WP': 'N', 'WP$': 'N',
-        'MD': 'V', 'VB': 'V', 'VBC': 'V', 'VBD': 'V', 'VBF': 'V', 'VBG': 'V', 'VBN': 'V', 'VBP': 'V',
-        'VBZ': 'V',
-        'JJ': 'J', 'JJR': 'J', 'JJS': 'J', 'LS': 'J', 'RB': 'A', 'RBR': 'A', 'RBS': 'A', 'WRB': 'A',
-        'DT': 'D', 'PDT': 'D', 'WDT': 'D',
-        'SYM': 'S', 'POS': 'S', '-LRB-': 'S', '-RRB-': 'S', ',': 'S', '-': 'S', ':': 'S', ';': 'S', '.': 'S',
-        '``': 'S',
-        '"': 'S', '$': 'S', "''": 'S', '#': 'S',
-        'CD': 'C', 'DAT': 'X', 'CC': 'B', 'EX': 'E', 'FW': 'F', 'IN': 'I', 'RP': 'R', 'TO': 'T',
-        'UH': 'U'
-    }
-pos_category_to_num = {cat: i for i, cat in enumerate(sorted(set(pos_category_map.values())))}
-
-
-def filter_out_by_allowed_pos(sent):
-    allowed_pos = [pos_category_to_num[pos] for pos in ['N', 'V', 'J', 'A', 'D', 'S', 'I', 'T']]
+def filter_out_by_allowed_pos(sent, alphabet_map):
+    allowed_pos = [alphabet_map[pos] for pos in ['N', 'V', 'J', 'A', 'D', 'S', 'I', 'T']]
     for pos in sent:
         if pos not in allowed_pos:
             return False
     return True
 
 
-def get_penn_pos_data(total_num_of_sents):
-    print(pos_category_to_num)
-    grammatical_sents = read_conll_pos_file("../Penn_Treebank/train.gold.conll")
+def get_penn_pos_data(total_num_of_sents, alphabet_map):
+    grammatical_sents = read_conll_pos_file("Penn_Treebank/train.gold.conll")
     grammaticals = []
     left = total_num_of_sents // 2
     curr_idx = 0
     while left > 0 and curr_idx < len(grammatical_sents):
         curr_grammaticals = list(grammatical_sents)[curr_idx:curr_idx + left]
-        grammaticals += list(filter(filter_out_by_allowed_pos, curr_grammaticals))
+        # grammaticals += list(filter(lambda x: filter_out_by_allowed_pos(x, alphabet_map), curr_grammaticals))
+        grammaticals += curr_grammaticals
         curr_idx += left
         left = (total_num_of_sents // 2) - len(grammaticals)
 
     ungrammaticals = []
     left = total_num_of_sents // 2
-    alphabet = list(set(pos_category_to_num.keys()).intersection({'N', 'V', 'J', 'A', 'D', 'S', 'I', 'T'}))
+    # alphabet = list(set(alphabet_map.keys()).intersection({'N', 'V', 'J', 'A', 'D', 'S', 'I', 'T'}))
+    alphabet = list(set(alphabet_map.keys()))
     while left > 0:
         curr_ungrammaticals = generate_random_strings(config.Data.max_len.int, left, alphabet)
-        curr_ungrammaticals = list(map(lambda sent: [pos_category_to_num[s] for s in list(sent)], curr_ungrammaticals))
+        curr_ungrammaticals = list(map(lambda sent: [alphabet_map[s] for s in list(sent)], curr_ungrammaticals))
         ungrammaticals += list(filter(lambda sent: filter_out_grammatical_sentences(sent, grammatical_sents),
                                       curr_ungrammaticals))
         left = (total_num_of_sents // 2) - len(ungrammaticals)
