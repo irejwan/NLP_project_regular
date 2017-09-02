@@ -1,5 +1,7 @@
 import DFA.DFA as DFA
 import pydot
+
+from data_utils import get_data_alphabet
 from main import init_state
 from search_node import SearchNode
 from state import State
@@ -8,7 +10,8 @@ from config import Config
 config = Config()
 
 
-def print_graph(nodes_list, graph_name, inv_alphabet_map):
+def print_graph(nodes_list, graph_name):
+    _, inv_alphabet_map = get_data_alphabet()
     graph = pydot.Dot(graph_type='digraph')
     nodes_dict = dict()
     i = 0

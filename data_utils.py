@@ -24,12 +24,13 @@ pos_category_map = \
 pos_category_to_num = {cat: i for i, cat in enumerate(sorted(set(pos_category_map.values())))}
 
 
-def generate_sentences(DATA_AMOUNT, alphabet_map, type):
+def generate_sentences(DATA_AMOUNT, alphabet_map):
     """Generate data and return it splitted to train, test and labels"""
-    if type == 'ptb':
-        raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT, alphabet_map)
-    else:
+    type_regex = config.Grammar.type_regex.boolean
+    if type_regex:
         raw_x, raw_y = get_regex_sentences(DATA_AMOUNT, alphabet_map)
+    else:
+        raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT, alphabet_map)
 
     percent_train = config.Data.percent_train.float
     num_train = int(DATA_AMOUNT * percent_train)
@@ -111,7 +112,7 @@ def get_regex_sentences(num_sents, alphabet_map):
     alphabet = list(alphabet_map.keys())
     max_len = config.Data.max_len.int
     min_len = config.Data.min_len.int
-    ungram_type = config.Grammar.ungram_type.str
+    all_transformations = config.Grammar.all_transformations_enabled.boolean
 
     regex = '^' + config.Grammar.regex.str + '$'
     num_stars = regex.count('*')
@@ -125,7 +126,7 @@ def get_regex_sentences(num_sents, alphabet_map):
     ungrammaticals = []
     left = num_sents // 2
     while left > 0:
-        if ungram_type.lower() == 'all':
+        if all_transformations:
             random_lengths = np.random.randint(low=min_len, high=max_len, size=left)
             curr_ungrammaticals = [[random.choice(alphabet) for _ in range(length)] for length in random_lengths]
         else:
@@ -184,3 +185,13 @@ def read_conll_pos_file(path):
                 pos = tokens[3]
                 curr.append(get_pos_num(pos))
     return sents
+
+
+def get_data_alphabet():
+    type_regex = config.Grammar.type_regex.boolean
+    if type_regex:
+        alphabet = config.Grammar.alphabet.lst
+        alphabet_map = {a: i for i, a in enumerate(alphabet)}
+    else:
+        alphabet_map = pos_category_to_num
+    return alphabet_map, {v: k for k, v in alphabet_map.items()}

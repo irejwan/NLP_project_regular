@@ -1,6 +1,6 @@
-from sklearn.cluster import KMeans
-from scipy.spatial import distance
 import numpy as np
+from scipy.spatial import distance
+from sklearn.cluster import KMeans, MeanShift, estimate_bandwidth
 
 
 def get_best_kmeans_model(X, max_k):
@@ -51,6 +51,14 @@ def compute_bic(model, X):
     return bic_value
 
 
-def get_cluster(state_vector, kmeans):
-    center_idx = kmeans.predict([state_vector])[0]
-    return kmeans.cluster_centers_[center_idx]
+def get_best_meanshift_model(X):
+    # TODO quantile hyperparameter can be changed
+    bandwidth = estimate_bandwidth(X, quantile=0.3, n_samples=X.shape[0])
+    ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
+    ms.fit(X)
+    return ms
+
+
+def get_cluster(state_vector, model):
+    center_idx = model.predict([state_vector])[0]
+    return model.cluster_centers_[center_idx]

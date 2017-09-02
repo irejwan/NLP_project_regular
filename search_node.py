@@ -1,5 +1,5 @@
 from config import Config
-from kmeans_handler import get_cluster
+from clustering_handler import get_cluster
 from state import State
 
 config = Config()
@@ -35,12 +35,12 @@ class SearchNode(object):
     def representative(self, value):
         self.__representative = value
 
-    def get_next_nodes(self, net, alphabet, old_to_new_nodes, kmeans_model=None):
+    def get_next_nodes(self, net, alphabet, old_to_new_nodes, model=None):
         next_nodes = set()
         for char in alphabet:
             next_state_analog = net.get_next_state(list(self.__state.quantized), char)
-            next_state_quantized = get_cluster(next_state_analog, kmeans_model) \
-                if config.States.use_kmeans.boolean else \
+            next_state_quantized = get_cluster(next_state_analog, model) \
+                if model else \
                 State.quantize_vec(next_state_analog, config.States.intervals_num.int)
             # the next state is in its quantized form, so the transitions will be deterministically set -
             # hypothetically, the net may return two different actions for two different states of one cluster.
