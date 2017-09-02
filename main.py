@@ -88,7 +88,18 @@ def extract_graphs(X, y):
     print('num of nodes in original graph:', len(analog_nodes))
     # trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node)
 
+    def color(node):
+        if node.state.final:
+            return 'g'
+        if node in trimmed_graph:
+            return 'b'
+        return 'r'
+
     trimmed_graph = get_trimmed_graph(analog_nodes)
+    states = [node.state.vec for node in analog_nodes]
+    colors = [color(node) for node in analog_nodes]
+    plot_states(states, colors)
+
     print('num of nodes in the trimmed graph:', len(trimmed_graph))
     trimmed_states = [node.state for node in trimmed_graph]
     quantized_nodes, init_node = get_quantized_graph(analog_states, init_state, rnn, X, y)

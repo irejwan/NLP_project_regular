@@ -52,7 +52,7 @@ def generate_sentences(DATA_AMOUNT, alphabet_map):
 
 
 def get_penn_pos_data(total_num_of_sents, alphabet_map):
-    grammatical_sents = read_conll_pos_file("../Penn_Treebank/train.gold.conll")
+    grammatical_sents = read_conll_pos_file("Penn_Treebank/train.gold.conll")
     grammaticals = sample_concat_sentences(grammatical_sents, total_num_of_sents // 2)
 
     ungrammaticals = []
@@ -117,7 +117,7 @@ def filter_by_pos(sent, alphabet_map):
 
 def sample_concat_sentences(sents, num_of_sents):
     def sample(sentences):
-        rand_idx = np.random.randint(0, len(sentences), 1)
+        rand_idx = np.random.randint(0, len(sentences))
         return sentences[rand_idx]
 
     def concat(sentences):
