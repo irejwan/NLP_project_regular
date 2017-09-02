@@ -52,54 +52,51 @@ def generate_sentences(DATA_AMOUNT, alphabet_map):
 
 
 def get_penn_pos_data(total_num_of_sents, alphabet_map):
+    alphabet = config.Grammar.alphabet.lst if config.Grammar.filter_alphabet.boolean else list(set(alphabet_map.keys()))
+
     grammatical_sents = read_conll_pos_file("../Penn_Treebank/train.gold.conll")
-    grammaticals = sample_concat_sentences(grammatical_sents, total_num_of_sents // 2)
+    grammaticals = sample_concat_sentences(grammatical_sents, total_num_of_sents // 2) \
+        if config.Grammar.use_orig_ptb_sent.boolean else grammatical_sents[:total_num_of_sents//2]
+    ungrammaticals = get_ungrammatical_sentences(alphabet, grammaticals, total_num_of_sents//2,
+                                                 filter_out_grammatical_sentences, grammatical_sents)
 
-    ungrammaticals = []
-    left = total_num_of_sents // 2
-    while left > 0:
-        curr_ungrammaticals = generate_random_strings(config.Data.max_len.int, left, list(set(alphabet_map.keys())))
-        curr_ungrammaticals = list(map(lambda sent: [alphabet_map[s] for s in list(sent)], curr_ungrammaticals))
-        ungrammaticals += list(filter(lambda sent: filter_out_grammatical_sentences(sent, grammatical_sents),
-                                      curr_ungrammaticals))
-        left = (total_num_of_sents // 2) - len(ungrammaticals)
-
-    data = grammaticals + ungrammaticals
+    data = list(map(lambda sent: [alphabet_map[s] for s in list(sent)], grammaticals + ungrammaticals))
     labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
     return data, labels
 
 
 def get_regex_sentences(num_sents, alphabet_map):
     alphabet = list(alphabet_map.keys())
-    max_len = config.Data.max_len.int
-    min_len = config.Data.min_len.int
-    all_transformations = config.Grammar.all_transformations_enabled.boolean
-
+    max_len, min_len = config.Data.max_len.int, config.Data.min_len.int
     regex = '^' + config.Grammar.regex.str + '$'
     num_stars = regex.count('*')
     if num_stars == 0:
         raise Exception('must provide regex that contains at least one *')
-
     ranges = '{' + str(min_len // num_stars) + ',' + str(max_len // num_stars) + '}'
     regex = ranges.join(regex.split('*'))
-    grammaticals = [list(rstr.xeger(regex)) for _ in range(num_sents // 2)]
 
-    ungrammaticals = []
-    left = num_sents // 2
-    while left > 0:
-        if all_transformations:
-            random_lengths = np.random.randint(low=min_len, high=max_len, size=left)
-            curr_ungrammaticals = [[random.choice(alphabet) for _ in range(length)] for length in random_lengths]
-        else:
-            sample = random.sample(grammaticals, left)
-            curr_ungrammaticals = [random_trans(sentence, alphabet) for sentence in sample]
-        ungrammaticals += list(filter(lambda sent: filter_by_regex(''.join(sent), regex),
-                                      curr_ungrammaticals))
-        left = (num_sents // 2) - len(ungrammaticals)
+    grammaticals = [list(rstr.xeger(regex)) for _ in range(num_sents // 2)]
+    ungrammaticals = get_ungrammatical_sentences(alphabet, grammaticals, num_sents//2, filter_by_regex, regex)
 
     data = np.array([np.array([alphabet_map[word] for word in sent]) for sent in grammaticals + ungrammaticals])
     labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
     return data, labels
+
+
+def get_ungrammatical_sentences(alphabet, grammaticals, num_of_sents, func, args):
+    all_transformations = config.Grammar.all_transformations_enabled.boolean
+    ungrammaticals = []
+    left = num_of_sents
+    while left > 0:
+        if all_transformations:
+            curr_ungrammaticals = generate_random_strings(config.Data.max_len.int, left, alphabet)
+        else:
+            sample = random.sample(grammaticals, left)
+            curr_ungrammaticals = [random_trans(sentence, alphabet) for sentence in sample]
+        ungrammaticals += list(filter(lambda sent: func(sent, args),
+                                      curr_ungrammaticals))
+        left = num_of_sents - len(ungrammaticals)
+    return ungrammaticals
 
 
 def generate_random_strings(max_length, num_of_sents, alphabet):
@@ -107,8 +104,8 @@ def generate_random_strings(max_length, num_of_sents, alphabet):
     return [rstr.rstr(alphabet, length) for length in random_lengths]
 
 
-def filter_by_pos(sent, alphabet_map):
-    allowed_pos = [alphabet_map[pos] for pos in ['N', 'V', 'J', 'A', 'D', 'S', 'I', 'T']]
+def filter_by_pos(sent):
+    allowed_pos = config.Grammar.alphabet.lst
     for pos in sent:
         if pos not in allowed_pos:
             return False
@@ -116,19 +113,21 @@ def filter_by_pos(sent, alphabet_map):
 
 
 def sample_concat_sentences(sents, num_of_sents):
+    filtered_sents = list(filter(lambda sent: filter_by_pos(sent), sents))
+
     def sample(sentences):
-        rand_idx = np.random.randint(0, len(sentences), 1)
+        rand_idx = np.random.randint(0, len(sentences))
         return sentences[rand_idx]
 
     def concat(sentences):
         rand_idx1, rand_idx2 = np.random.randint(0, len(sentences), 2)
-        conj = pos_category_to_num[pos_category_map['CC']]
-        return sentences[rand_idx1] + [conj] + sentences[rand_idx2]
+        conj = ['B']
+        return sentences[rand_idx1] + conj + sentences[rand_idx2]
 
     output = []
     for i in range(num_of_sents):
         action = np.random.choice([sample, concat])
-        output.append(action(sents))
+        output.append(action(filtered_sents))
     return output
 
 
@@ -163,11 +162,11 @@ def random_trans(sentence, alphabet):
                 result.insert(ind, new_char)
             else:  # replacement
                 result[ind] = new_char
-    return result
+    return ''.join(result)
 
 
 def filter_out_grammatical_sentences(ungrammatical_sent, grammatical_sents):
-    if tuple(ungrammatical_sent) in grammatical_sents:
+    if list(ungrammatical_sent) in grammatical_sents:
         return False
     return True
 
@@ -191,7 +190,7 @@ def read_conll_pos_file(path):
             else:
                 tokens = line.strip().split("\t")
                 pos = tokens[3]
-                curr.append(get_pos_num(pos))
+                curr.append(pos_category_map[pos])
     return sents
 
 
@@ -202,4 +201,7 @@ def get_data_alphabet():
         alphabet_map = {a: i for i, a in enumerate(alphabet)}
     else:
         alphabet_map = pos_category_to_num
+        if config.Grammar.filter_alphabet.boolean:  # returning the filtered alphabet
+            alphabet_map = {pos: num for pos, num in pos_category_to_num.items()
+                            if pos in config.Grammar.alphabet.lst}
     return alphabet_map, {v: k for k, v in alphabet_map.items()}
