@@ -160,3 +160,14 @@ def evaluate_graph(X, y, init_node):
         prediction = curr_node.is_accept
         acc += (prediction == label)
     return acc / len(y)
+
+
+def is_accurate(X, y, init_node):
+    for sent, label in zip(X, y):
+        curr_node = init_node
+        for word in sent:
+            curr_node = curr_node.transitions[word]
+        prediction = curr_node.is_accept
+        if prediction != label:
+            return False
+    return True

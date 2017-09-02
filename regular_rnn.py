@@ -1,7 +1,8 @@
 import tensorflow as tf
-from tensorflow.contrib.rnn import BasicRNNCell
+from tensorflow.contrib.rnn import RNNCell, BasicRNNCell, GRUCell
 from tensorflow.python.ops.rnn import dynamic_rnn as rnn
 import tensorflow.contrib.slim as slim
+from tensorflow.python.ops.math_ops import tanh
 from config import Config
 
 config = Config()
@@ -34,8 +35,8 @@ class RegularRNN:
 
         self.init_state_ph = tf.placeholder(shape=[None, state_size], dtype=tf.float32, name='init_state_ph')
 
-        stackcell = BasicRNNCell(state_size)
-        _, self.final_state = rnn(stackcell, input, initial_state=tf.cast(self.init_state_ph, tf.float32))
+        cell = GRUCell(state_size)
+        _, self.final_state = rnn(cell, input, initial_state=tf.cast(self.init_state_ph, tf.float32))
         with tf.name_scope('prediction'):
             self.prediction = slim.fully_connected(self.final_state, 1, activation_fn=None,
                                                    weights_initializer=tf.contrib.layers.xavier_initializer(),
@@ -66,3 +67,26 @@ class RegularRNN:
     def is_accept(self, state):
         y_hat = self.sess.run(self.prediction, feed_dict={self.init_state_ph: state, self.input_ph: []})
         return y_hat[0][0] > 0
+
+
+class RegularRNNCell(RNNCell):
+  """RNN cell with hidden layer."""
+  def __init__(self, num_units, num_hidden=None):
+    self._num_units = num_units
+    if not num_hidden:
+        num_hidden = num_units
+    self._num_hidden = num_hidden
+
+  @property
+  def state_size(self):
+    return self._num_units
+
+  @property
+  def output_size(self):
+    return self._num_units
+
+  def __call__(self, inputs, state, scope=None):
+    cell_inputs = tf.concat([inputs, state], axis=1, name='cell_inputs')
+    hidden = slim.fully_connected(cell_inputs, self._num_hidden, activation_fn=tanh, scope='cell_hidden')
+    output = slim.fully_connected(hidden, self._num_units, activation_fn=tf.nn.relu, scope='cell_output')
+    return output, output

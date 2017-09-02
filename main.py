@@ -80,15 +80,18 @@ def extract_graphs(X, y):
     """
     init_node = SearchNode(State(init_state, quantized=tuple(init_state)))
     analog_nodes = get_analog_nodes(X, init_node, rnn)
+    analog_states = [node.state for node in analog_nodes if not node == init_node]
 
     for node in analog_nodes:
         node.transitions = analog_nodes[node]
     # print_graph(analog_nodes, 'orig.png')
     print('num of nodes in original graph:', len(analog_nodes))
-    retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node)
+    # trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node)
 
-    states_vectors_pool = [node.state.vec for node in analog_nodes]
-    quantized_nodes, init_node = get_quantized_graph(states_vectors_pool, init_state, rnn, X, y)
+    trimmed_graph = get_trimmed_graph(analog_nodes)
+    print('num of nodes in the trimmed graph:', len(trimmed_graph))
+    trimmed_states = [node.state for node in trimmed_graph]
+    quantized_nodes, init_node = get_quantized_graph(analog_states, init_state, rnn, X, y)
     acc = evaluate_graph(X, y, init_node)
     print('quantized graph is correct in {:.1f}% of the sentences classified correctly by the RNN'.format(acc * 100))
     print_graph(quantized_nodes, 'quantized_graph_reduced.png')
