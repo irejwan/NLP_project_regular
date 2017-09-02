@@ -54,7 +54,7 @@ def generate_sentences(DATA_AMOUNT, alphabet_map):
 def get_penn_pos_data(total_num_of_sents, alphabet_map):
     alphabet = config.Grammar.alphabet.lst if config.Grammar.filter_alphabet.boolean else list(set(alphabet_map.keys()))
 
-    grammatical_sents = read_conll_pos_file("../Penn_Treebank/train.gold.conll")
+    grammatical_sents = read_conll_pos_file("Penn_Treebank/train.gold.conll")
     grammaticals = grammatical_sents[:total_num_of_sents//2] if config.Grammar.use_orig_ptb_sent.boolean \
         else sample_concat_sentences(grammatical_sents, total_num_of_sents//2)
     ungrammaticals = get_ungrammatical_sentences(alphabet, grammaticals, total_num_of_sents//2,
@@ -150,10 +150,12 @@ def filter_by_regex(sent, regex):
 
 def random_trans(sentence, alphabet):
     result = copy(sentence)
-    num_trans = np.random.randint(1, min(2, len(sentence)))
+    if len(sentence) < 2:
+        return sentence
+    num_trans = np.random.randint(1, len(sentence))
     for i in range(num_trans):
         trans = np.random.randint(2)
-        ind = np.random.randint(len(sentence))
+        ind = np.random.randint(len(result))
         if trans == 0:  # deletion
             result.pop(ind)
         else:

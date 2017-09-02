@@ -86,7 +86,7 @@ def extract_graphs(X, y):
         node.transitions = analog_nodes[node]
     # print_graph(analog_nodes, 'orig.png')
     print('num of nodes in original graph:', len(analog_nodes))
-    # trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node)
+    trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node)
 
     def color(node):
         if node.state.final:
@@ -105,7 +105,8 @@ def extract_graphs(X, y):
     quantized_nodes, init_node = get_quantized_graph(analog_states, init_state, rnn, X, y)
     acc = evaluate_graph(X, y, init_node)
     print('quantized graph is correct in {:.1f}% of the sentences classified correctly by the RNN'.format(acc * 100))
-    print_graph(quantized_nodes, 'quantized_graph_reduced.png')
+    if len(quantized_nodes) < 300:
+        print_graph(quantized_nodes, 'quantized_graph_reduced.png')
     retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized', init_node)
 
 
@@ -117,6 +118,8 @@ if __name__ == '__main__':
     sess = tf.InteractiveSession()
     rnn = RegularRNN(sess, len(alphabet_map))
     sess.run(tf.global_variables_initializer())
-    correct, correct_labels = train(X_train, y_train, X_test, y_test, sess, rnn)
-    print('num of strings classified correctly by the net: ', len(correct))
-    extract_graphs(correct, correct_labels)
+    correct_X, correct_y = train(X_train, y_train, X_test, y_test, sess, rnn)
+    print('num of strings classified correctly by the net: ', len(correct_y))
+    correct_X, correct_y = zip(*set(zip([tuple(x) for x in correct_X], correct_y)))
+    print('distinct:', sum(correct_y), 'grammatical', len(correct_y)-sum(correct_y), 'ungrammaticals')
+    extract_graphs(correct_X, correct_y)

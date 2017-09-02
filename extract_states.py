@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import time
 from sklearn.decomposition import PCA
 
 from clustering_handler import get_cluster, KMeans, get_best_meanshift_model
@@ -160,52 +161,69 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
     return trimmed_states
 
 
-def get_kmeans(analog_states, init_state, net, X, y, min_k=1):
+def get_kmeans(analog_states, init_state, net, X, y, min_k=50):
     _, alphabet_idx = get_data_alphabet()
     print('working on k-means')
     size = len(analog_states) - 1
     factor = int(np.log(size))
-    curr_k = min_k / factor
+    curr_k = min_k
 
     accept_vecs = [state.vec for state in analog_states if state.final]
     reject_vecs = [state.vec for state in analog_states if not state.final]
     states_vectors_pool = np.array(accept_vecs + reject_vecs)
     acc = 0
-    while acc < 1 and curr_k < size:
-        curr_k = min(int(curr_k * factor), size)
-        acc, curr_model = evaluate_current_model(curr_k, states_vectors_pool, accept_vecs, reject_vecs)
-        print('k =', curr_k, 'acc =', acc)
-    if curr_k == size:
-        return curr_model
 
-    min_k = curr_k // factor
-    max_k = curr_k
+    while acc < 1 and curr_k < size:
+        acc, curr_model = evaluate_current_model(curr_k, states_vectors_pool, accept_vecs, reject_vecs,
+                                                 alphabet_idx, analog_states, net, X, y)
+        print('k =', curr_k, 'acc =', acc)
+        curr_k *= factor
+
+    if acc < 1:
+        max_k = size
+        min_k = curr_k // factor
+    else:
+        max_k = curr_k // factor
+        min_k = max_k // factor
+
     print('k_max = {} and k_min = {}'.format(max_k, min_k))
 
-    while max_k - min_k > 1:
+    while max_k - min_k > factor:
         curr_k = min_k + (max_k - min_k) // 2
-        acc, curr_model = evaluate_current_model(curr_k, states_vectors_pool, accept_vecs, reject_vecs)
+        acc, curr_model = evaluate_current_model(curr_k, states_vectors_pool, accept_vecs, reject_vecs,
+                                                 alphabet_idx, analog_states, net, X, y)
         print('k =', curr_k, 'acc =', acc)
         if acc == 1:
             max_k = curr_k
         else:
             min_k = curr_k
-    print('finished. best k is:', curr_k)
-    return curr_model
+
+    k = min_k + (max_k - min_k) // 2
+    print('finished. best k is:', k)
+    return KMeans(n_clusters=k).fit(states_vectors_pool)
 
 
-def evaluate_current_model(curr_k, states_vectors_pool, accept_vecs, reject_vecs):
-    curr_model = KMeans(n_clusters=curr_k).fit(states_vectors_pool)
-    accept_clusters = set(curr_model.predict(accept_vecs))
-    reject_clusters = set(curr_model.predict(reject_vecs))
-    if len(accept_clusters.intersection(reject_clusters)) > 0:
-        return 0, None
-    return 1, curr_model
+def evaluate_current_model(curr_k, states_vectors_pool, accept_vecs, reject_vecs, alphabet_idx, analog_states, net, X, y):
+    clk = time.clock()
+    curr_model = KMeans(n_clusters=curr_k, n_jobs=5, algorithm='elkan', max_iter=20).fit(states_vectors_pool)
+    clk2 = time.clock()
+    print(clk2-clk)
+    clk = clk2
 
-    # quantized_nodes, init_node = get_quantized_graph_for_model(alphabet_idx, analog_states, curr_model, init_state, net,
-    #                                                            X)
-    # is_acc = is_accurate(X, y, init_node)
-    # return is_acc, curr_model
+    # accept_clusters = set(curr_model.predict(accept_vecs))
+    # reject_clusters = set(curr_model.predict(reject_vecs))
+    # # clk2 = time.clock()
+    # # print(clk2 - clk)
+    # if len(accept_clusters.intersection(reject_clusters)) > 0:
+    #     return 0, None
+    # return 1, curr_model
+
+    quantized_nodes, init_node = get_quantized_graph_for_model(alphabet_idx, analog_states, curr_model,
+                                                               init_state, net, X)
+    clk2 = time.clock()
+    print(clk2 - clk)
+    is_acc = is_accurate(X, y, init_node)
+    return is_acc, curr_model
 
 
 def plot_states(states, colors):
@@ -213,5 +231,3 @@ def plot_states(states, colors):
     le_X = le.fit_transform(states)
     plt.scatter(le_X[:, 0], le_X[:, 1], c=colors)
     plt.show()
-
-
