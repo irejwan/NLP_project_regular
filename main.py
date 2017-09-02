@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     X_train, y_train, X_test, y_test = generate_sentences(num_sents, alphabet_map)
     sess = tf.InteractiveSession()
-    rnn = RegularRNN(sess)
+    rnn = RegularRNN(sess, len(alphabet_map))
     sess.run(tf.global_variables_initializer())
     correct, correct_labels = train(X_train, y_train, X_test, y_test, sess, rnn)
     print('num of strings classified correctly by the net: ', len(correct))
