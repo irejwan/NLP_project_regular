@@ -40,13 +40,14 @@ def generate_sentences(DATA_AMOUNT, alphabet_map):
     for i, j in zip(raw_x[:5], raw_y[:5]):
         print(i, j)
 
-    X_train = np.array(raw_x[:num_train])
-    y_train = np.array(raw_y[:num_train])
-    X_test = np.array(raw_x[num_train:])
-    y_test = np.array(raw_y[num_train:])
+    X_train, y_train = raw_x[:num_train], raw_y[:num_train]
+    X_test, y_test = raw_x[num_train:], raw_y[num_train:]
 
     X_train, y_train = zip(*(sorted(zip(X_train, y_train), key=lambda x: len(x[0]))))
     X_test, y_test = zip(*(sorted(zip(X_test, y_test), key=lambda x: len(x[0]))))
+
+    X_train, y_train = np.array([np.array(x) for x in X_train]), np.array([np.array(y) for y in y_train])
+    X_test, y_test = np.array([np.array(x) for x in X_test]), np.array([np.array(y) for y in y_test])
     return X_train, y_train, X_test, y_test
 
 
