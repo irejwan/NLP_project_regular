@@ -55,8 +55,8 @@ def get_penn_pos_data(total_num_of_sents, alphabet_map):
     alphabet = config.Grammar.alphabet.lst if config.Grammar.filter_alphabet.boolean else list(set(alphabet_map.keys()))
 
     grammatical_sents = read_conll_pos_file("../Penn_Treebank/train.gold.conll")
-    grammaticals = sample_concat_sentences(grammatical_sents, total_num_of_sents // 2) \
-        if config.Grammar.use_orig_ptb_sent.boolean else grammatical_sents[:total_num_of_sents//2]
+    grammaticals = grammatical_sents[:total_num_of_sents//2] if config.Grammar.use_orig_ptb_sent.boolean \
+        else sample_concat_sentences(grammatical_sents, total_num_of_sents//2)
     ungrammaticals = get_ungrammatical_sentences(alphabet, grammaticals, total_num_of_sents//2,
                                                  filter_out_grammatical_sentences, grammatical_sents)
 
