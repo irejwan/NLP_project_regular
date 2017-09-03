@@ -1,11 +1,12 @@
 import DFA.DFA as DFA
 import pydot
-
 from data_utils import get_data_alphabet
 from main import init_state
 from search_node import SearchNode
 from state import State
 from config import Config
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
 
 config = Config()
 
@@ -151,6 +152,40 @@ def get_trimmed_graph(analog_nodes):
     return trimmed_graph
 
 
+def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, path='', plot=False):
+    """
+    returns the exact equivalent graph using MN algorithm.
+    complexity improvement: we trim the graph first - meaning, we only keep nodes that lead to an accepting state.
+    :param graph_nodes: the original graph nodes
+    :param graph_prefix_name: prefix name, for the .png file
+    :param init_node: the initial state node
+    :return: nothing
+    """
+    trimmed_graph = get_trimmed_graph(graph_nodes)
+    print('num of nodes in the', graph_prefix_name, 'trimmed graph:', len(trimmed_graph))
+    trimmed_states = [node.state for node in trimmed_graph]
+
+    if len(trimmed_graph) > 300:
+        print('trimmed graph too big, skipping MN')
+        return trimmed_states
+
+    print_graph(trimmed_graph, path + graph_prefix_name + '_trimmed_graph.png')
+
+    reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph}, init_node)
+    print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
+    print_graph(reduced_nodes, path + graph_prefix_name + '_minimized_mn.png')
+
+    if plot and len(trimmed_graph) > 0:
+        all_nodes = list(trimmed_graph)  # we cast the set into a list, so we'll keep the order
+        all_states = [node.state.vec for node in all_nodes]
+        representatives = set([node.representative for node in trimmed_graph])
+        representatives_colors_map = {rep: i for i, rep in enumerate(representatives)}
+        colors = [representatives_colors_map[node.representative] for node in all_nodes]
+        plot_states(all_states, colors)
+
+    return trimmed_states
+
+
 def evaluate_graph(X, y, init_node):
     acc = 0
     for sent, label in zip(X, y):
@@ -171,3 +206,10 @@ def is_accurate(X, y, init_node):
         if prediction != label:
             return False
     return True
+
+
+def plot_states(states, colors):
+    le = PCA(n_components=2)
+    le_X = le.fit_transform(states)
+    plt.scatter(le_X[:, 0], le_X[:, 1], c=colors)
+    plt.show()

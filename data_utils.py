@@ -24,9 +24,13 @@ pos_category_map = \
 pos_category_to_num = {cat: i for i, cat in enumerate(sorted(set(pos_category_map.values())))}
 
 
-def generate_sentences(DATA_AMOUNT, alphabet_map):
+def generate_sentences(alphabet_map):
     """Generate data and return it splitted to train, test and labels"""
     source = config.Data.grammatical_source.str
+    size_train = config.Data.size_train.int
+    size_val = config.Data.size_validation.int
+    size_test = config.Data.size_test.int
+    DATA_AMOUNT = size_train + size_val + size_test
     if source == 'regex':
         raw_x, raw_y = get_regex_sentences(DATA_AMOUNT, alphabet_map)
     elif source == 'ptb':
@@ -36,23 +40,24 @@ def generate_sentences(DATA_AMOUNT, alphabet_map):
     else:
         raise Exception('must provide source between: regex, ptb, phonology')
 
-    percent_train = config.Data.percent_train.float
-    num_train = int(DATA_AMOUNT * percent_train)
     zipped = list(zip(raw_x, raw_y))
     random.shuffle(zipped)
     raw_x, raw_y = zip(*zipped)
     for i, j in zip(raw_x[:5], raw_y[:5]):
         print(i, j)
 
-    X_train, y_train = raw_x[:num_train], raw_y[:num_train]
-    X_test, y_test = raw_x[num_train:], raw_y[num_train:]
+    X_train, y_train = raw_x[:size_train], raw_y[:size_train]
+    X_val, y_val = raw_x[size_train:(size_train + size_val)], raw_y[size_train:(size_train + size_val)]
+    X_test, y_test = raw_x[(size_train + size_val):], raw_y[(size_train + size_val):]
 
     X_train, y_train = zip(*(sorted(zip(X_train, y_train), key=lambda x: len(x[0]))))
+    X_val, y_val = zip(*(sorted(zip(X_val, y_val), key=lambda x: len(x[0]))))
     X_test, y_test = zip(*(sorted(zip(X_test, y_test), key=lambda x: len(x[0]))))
 
     X_train, y_train = np.array([np.array(x) for x in X_train]), np.array([np.array(y) for y in y_train])
+    X_val, y_val = np.array([np.array(x) for x in X_val]), np.array([np.array(y) for y in y_val])
     X_test, y_test = np.array([np.array(x) for x in X_test]), np.array([np.array(y) for y in y_test])
-    return X_train, y_train, X_test, y_test
+    return X_train, y_train, X_val, y_val, X_test, y_test
 
 
 def get_penn_pos_data(total_num_of_sents, alphabet_map):
@@ -223,7 +228,7 @@ def get_phonology_data(total_num_of_sents, alphabet_map):
     vowels = 'aeiou'
     with open('alice_full_text.txt') as f:
         text = f.read().lower()
-    words = text.split(' ')
+    words = text.split()
     words = filter(str.isalpha, words)
     tagged_words = [['V' if c in vowels else 'C' for c in word] for word in words]
     grammaticals = list(np.random.choice(tagged_words, total_num_of_sents // 2))
@@ -233,3 +238,6 @@ def get_phonology_data(total_num_of_sents, alphabet_map):
     data = list(map(lambda sent: [alphabet_map[s] for s in list(sent)], grammaticals + ungrammaticals))
     labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
     return data, labels
+
+if __name__ == '__main__':
+    get_phonology_data(100,get_data_alphabet()[0])
