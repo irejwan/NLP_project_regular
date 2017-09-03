@@ -26,11 +26,15 @@ pos_category_to_num = {cat: i for i, cat in enumerate(sorted(set(pos_category_ma
 
 def generate_sentences(DATA_AMOUNT, alphabet_map):
     """Generate data and return it splitted to train, test and labels"""
-    type_regex = config.Grammar.type_regex.boolean
-    if type_regex:
+    source = config.Data.grammatical_source.str
+    if source == 'regex':
         raw_x, raw_y = get_regex_sentences(DATA_AMOUNT, alphabet_map)
-    else:
+    elif source == 'ptb':
         raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT, alphabet_map)
+    elif source == 'phonology':
+        raw_x, raw_y = get_phonology_data(DATA_AMOUNT, alphabet_map)
+    else:
+        raise Exception('must provide source between: regex, ptb, phonology')
 
     percent_train = config.Data.percent_train.float
     num_train = int(DATA_AMOUNT * percent_train)
@@ -52,11 +56,12 @@ def generate_sentences(DATA_AMOUNT, alphabet_map):
 
 
 def get_penn_pos_data(total_num_of_sents, alphabet_map):
-    alphabet = config.Grammar.alphabet.lst if config.Grammar.filter_alphabet.boolean else list(set(alphabet_map.keys()))
+    alphabet = config.PTB.alphabet.lst if config.PTB.filter_alphabet.boolean else list(set(alphabet_map.keys()))
 
     grammatical_sents = read_conll_pos_file("Penn_Treebank/train.gold.conll")
-    grammaticals = grammatical_sents[:total_num_of_sents//2] if config.Grammar.use_orig_ptb_sent.boolean \
+    grammaticals = grammatical_sents[:total_num_of_sents//2] if config.PTB.use_orig_sent.boolean \
         else sample_concat_sentences(grammatical_sents, total_num_of_sents//2)
+    # todo: Mor filter also for not orig sentences
     ungrammaticals = get_ungrammatical_sentences(alphabet, grammaticals, total_num_of_sents//2,
                                                  filter_out_grammatical_sentences, grammatical_sents)
 
@@ -67,8 +72,8 @@ def get_penn_pos_data(total_num_of_sents, alphabet_map):
 
 def get_regex_sentences(num_sents, alphabet_map):
     alphabet = list(alphabet_map.keys())
-    max_len, min_len = config.Data.max_len.int, config.Data.min_len.int
-    regex = '^' + config.Grammar.regex.str + '$'
+    max_len, min_len = config.Regex.max_len.int, config.Regex.min_len.int
+    regex = '^' + config.Regex.regex.str + '$'
     num_stars = regex.count('*')
     if num_stars == 0:
         raise Exception('must provide regex that contains at least one *')
@@ -84,14 +89,15 @@ def get_regex_sentences(num_sents, alphabet_map):
 
 
 def get_ungrammatical_sentences(alphabet, grammaticals, num_of_sents, func, args):
-    all_transformations = config.Grammar.all_transformations_enabled.boolean
+    ungrammatical_by_trans = config.Data.ungrammatical_by_trans.boolean
     ungrammaticals = []
+    lengths = [len(sent) for sent in grammaticals]
     left = num_of_sents
     while left > 0:
-        if all_transformations:
-            curr_ungrammaticals = generate_random_strings(config.Data.max_len.int, left, alphabet)
+        if not ungrammatical_by_trans:
+            curr_ungrammaticals = generate_random_strings(left, alphabet, lengths)
         else:
-            sample = random.sample(grammaticals, left)
+            sample = np.random.choice(grammaticals, left)
             curr_ungrammaticals = [random_trans(sentence, alphabet) for sentence in sample]
         ungrammaticals += list(filter(lambda sent: func(sent, args),
                                       curr_ungrammaticals))
@@ -99,13 +105,13 @@ def get_ungrammatical_sentences(alphabet, grammaticals, num_of_sents, func, args
     return ungrammaticals
 
 
-def generate_random_strings(max_length, num_of_sents, alphabet):
-    random_lengths = np.random.randint(low=1, high=max_length, size=num_of_sents)
+def generate_random_strings(num_of_sents, alphabet, lengths):
+    random_lengths = np.random.choice(lengths, num_of_sents)
     return [rstr.rstr(alphabet, length) for length in random_lengths]
 
 
 def filter_by_pos(sent):
-    allowed_pos = config.Grammar.alphabet.lst
+    allowed_pos = config.PTB.alphabet.lst
     for pos in sent:
         if pos not in allowed_pos:
             return False
@@ -197,13 +203,33 @@ def read_conll_pos_file(path):
 
 
 def get_data_alphabet():
-    type_regex = config.Grammar.type_regex.boolean
-    if type_regex:
-        alphabet = config.Grammar.alphabet.lst
+    source = config.Data.grammatical_source.str
+    if source == 'regex':
+        alphabet = config.Regex.alphabet.lst
         alphabet_map = {a: i for i, a in enumerate(alphabet)}
-    else:
+    elif source == 'ptb':
         alphabet_map = pos_category_to_num
-        if config.Grammar.filter_alphabet.boolean:  # returning the filtered alphabet
+        if config.PTB.filter_alphabet.boolean:  # returning the filtered alphabet
             alphabet_map = {pos: num for pos, num in pos_category_to_num.items()
-                            if pos in config.Grammar.alphabet.lst}
+                            if pos in config.PTB.alphabet.lst}
+    else:   # phonology
+        alphabet_map = {'C': 0, 'V': 1}
     return alphabet_map, {v: k for k, v in alphabet_map.items()}
+
+
+def get_phonology_data(total_num_of_sents, alphabet_map):
+    alphabet = list(alphabet_map.keys())
+
+    vowels = 'aeiou'
+    with open('alice_full_text.txt') as f:
+        text = f.read().lower()
+    words = text.split(' ')
+    words = filter(str.isalpha, words)
+    tagged_words = [['V' if c in vowels else 'C' for c in word] for word in words]
+    grammaticals = list(np.random.choice(tagged_words, total_num_of_sents // 2))
+    ungrammaticals = get_ungrammatical_sentences(alphabet, grammaticals, total_num_of_sents // 2,
+                                                 filter_out_grammatical_sentences, grammaticals)
+
+    data = list(map(lambda sent: [alphabet_map[s] for s in list(sent)], grammaticals + ungrammaticals))
+    labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
+    return data, labels

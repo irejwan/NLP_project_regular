@@ -98,7 +98,7 @@ def get_quantized_graph(analog_states, init_state, net, train_data, labels):
     """
     _, alphabet_idx = get_data_alphabet()
     cluster_model = get_clustering_model(analog_states, init_state, net, train_data, labels) \
-        if config.States.use_model.boolean else None
+        if config.ClusteringModel.use_model.boolean else None
     nodes, start = get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, init_state, net,
                                                  train_data)
     return {node: node.transitions for node in nodes}, start

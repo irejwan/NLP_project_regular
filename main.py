@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import pandas as pd
 from data_utils import generate_sentences
 from extract_states import *
 from regular_rnn import RegularRNN
@@ -111,7 +111,7 @@ def extract_graphs(X, y):
 
 
 if __name__ == '__main__':
-    alphabet_map, _ = get_data_alphabet()
+    alphabet_map, inv_alphabet_map = get_data_alphabet()
     print(alphabet_map)
 
     X_train, y_train, X_test, y_test = generate_sentences(num_sents, alphabet_map)
@@ -120,6 +120,11 @@ if __name__ == '__main__':
     sess.run(tf.global_variables_initializer())
     correct_X, correct_y = train(X_train, y_train, X_test, y_test, sess, rnn)
     print('num of strings classified correctly by the net: ', len(correct_y))
-    correct_X, correct_y = zip(*set(zip([tuple(x) for x in correct_X], correct_y)))
-    print('distinct:', sum(correct_y), 'grammatical', len(correct_y)-sum(correct_y), 'ungrammaticals')
-    extract_graphs(correct_X, correct_y)
+
+    words_df = pd.DataFrame({'num': correct_X, 'label': correct_y})
+    words_df['word'] = words_df.num.apply(lambda word: ''.join([inv_alphabet_map[c] for c in word]))
+    words_df.groupby(['word','label']).count().to_csv('correct_words_count.csv')
+
+    distinct_X, distinct_y = zip(*set(zip([tuple(x) for x in correct_X], correct_y)))
+    print('distinct:', sum(distinct_y), 'grammatical', len(distinct_y)-sum(distinct_y), 'ungrammaticals')
+    extract_graphs(distinct_X, distinct_y)
