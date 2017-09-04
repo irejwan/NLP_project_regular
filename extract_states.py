@@ -63,6 +63,8 @@ def get_analog_nodes(train_data, init_node, net):
             analog_nodes[curr_node][word] = next_node
             curr_node = next_node
         curr_node.state.final = net.is_accept(np.array([curr_node.state.vec]))
+    for node in analog_nodes:  # updating the nodes transitions
+        node.transitions = analog_nodes[node]
     return analog_nodes
 
 
@@ -91,8 +93,8 @@ def get_quantized_graph(analog_states, init_node, net, X, y, plot=False):
     if plot:
         plot_states(states_vectors_pool, cluster_model.predict(states_vectors_pool))
 
-    nodes = get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, init_node, net, X)
-    return {node: node.transitions for node in nodes}
+    nodes, start = get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, init_node, net, X)
+    return nodes
 
 
 def get_merged_graph_by_clusters(init_node, net, train_data, model):
@@ -121,21 +123,20 @@ def get_merged_graph_by_clusters(init_node, net, train_data, model):
     return clustered_graph
 
 
-def get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, init_state, net, train_data):
+def get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, init_node, net, train_data):
     """
     :param alphabet_idx:  the alphabet indices
     :param analog_states: a list of analog (continuous, non-quantized) States
     :param cluster_model: a specific clustering model - like k-means/meanshift or None (for interval quantization)
-    :param init_state: the initial state vector
+    :param init_node: the initial state vector
     :param net: the RNN
     :param train_data: the training data
     :return: the quantized graph by a specific model (cluster_model)
     """
     quantize_states(analog_states, model=cluster_model)
-    start = SearchNode(State(init_state))
     # nodes = get_graph(net, start, alphabet_idx, model=cluster_model)
-    nodes = get_merged_graph_by_clusters(start, net, train_data, model=cluster_model)
-    return nodes, start
+    nodes = get_merged_graph_by_clusters(init_node, net, train_data, model=cluster_model)
+    return nodes, init_node
 
 
 def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, plot=False):
@@ -145,6 +146,7 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
     :param graph_nodes: the original graph nodes
     :param graph_prefix_name: prefix name, for the .png file
     :param init_node: the initial state node
+    :param plot: plot the states
     :return: nothing
     """
     trimmed_graph = get_trimmed_graph(graph_nodes)
@@ -155,11 +157,11 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
         print('trimmed graph too big, skipping MN')
         return trimmed_states
 
-    print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png')
+    print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png', init_node)
 
     reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph}, init_node)
     print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
-    print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png')
+    print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png', init_node)
 
     if plot and len(trimmed_graph) > 0:
         all_nodes = list(trimmed_graph)  # we cast the set into a list, so we'll keep the order
@@ -203,7 +205,8 @@ def get_kmeans(analog_states, init_node, net, X, y, min_k=50, acc_th=0.9):
         else:
             min_k = curr_k
 
-    k = min_k + (max_k - min_k) // 2
+    # k = min_k + (max_k - min_k) // 2
+    k = max_k
     print('finished. best k is:', k)
     return KMeans(n_clusters=k).fit(states_vectors_pool)
 
@@ -212,8 +215,8 @@ def evaluate_kmeans_model(k, alphabet_idx, analog_states, init_node, net, X, y):
     print('k = {}:'.format(k), end=' ')
     clk = time.clock()
     states_vectors_pool = np.array([state.vec for state in analog_states])
-    curr_model = KMeans(n_clusters=k, n_jobs=5, algorithm='elkan', max_iter=20).fit(states_vectors_pool)
-    get_quantized_graph_for_model(alphabet_idx, analog_states, curr_model, init_node, net, X)
+    curr_model = KMeans(n_clusters=k, algorithm='elkan', max_iter=20).fit(states_vectors_pool)
+    _, init_node = get_quantized_graph_for_model(alphabet_idx, analog_states, curr_model, init_node, net, X)
     adeq = evaluate_graph(X, y, init_node)
     clk2 = time.clock()
     print('took {:.2f} sec,'.format(clk2 - clk), 'adequate to the net in', adeq, 'of validation sentences')

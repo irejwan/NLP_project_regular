@@ -171,11 +171,11 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
         print('trimmed graph too big, skipping MN')
         return trimmed_states
 
-    print_graph(trimmed_graph, path + graph_prefix_name + '_trimmed_graph.png')
+    print_graph(trimmed_graph, path + graph_prefix_name + '_trimmed_graph.png', init_node)
 
     reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph}, init_node)
     print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
-    print_graph(reduced_nodes, path + graph_prefix_name + '_minimized_mn.png')
+    print_graph(reduced_nodes, path + graph_prefix_name + '_minimized_mn.png', init_node)
 
     if plot and len(trimmed_graph) > 0:
         all_nodes = list(trimmed_graph)  # we cast the set into a list, so we'll keep the order

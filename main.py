@@ -84,9 +84,6 @@ def extract_graphs():
     analog_nodes = get_analog_nodes(X_val_distinct, init_node, rnn)
     analog_states = [node.state for node in analog_nodes if not node == init_node]
 
-    for node in analog_nodes:
-        node.transitions = analog_nodes[node]
-
     if len(analog_nodes) < 300:
         print_graph(analog_nodes, path + 'orig.png')
 
@@ -123,7 +120,7 @@ def extract_graphs():
         print('quantized graph is correct in {:.1f}% of test sentences'.format(acc * 100))
 
         if len(quantized_nodes) < 300:
-            print_graph(quantized_nodes, 'quantized_graph_reduced.png')
+            print_graph(quantized_nodes, 'quantized_graph_reduced.png', init_node)
 
         retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized', init_node, path=path, plot=plot)
 
