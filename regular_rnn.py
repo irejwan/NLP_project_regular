@@ -34,10 +34,14 @@ class RegularRNN:
 
         self.init_state_ph = tf.placeholder(shape=[None, state_size], dtype=tf.float32, name='init_state_ph')
 
-        cell = GRUCell(state_size)
+        # cell = GRUCell(state_size)
+        cell = BasicRNNCell(state_size)
         _, self.final_state = rnn(cell, input, initial_state=tf.cast(self.init_state_ph, tf.float32))
         with tf.name_scope('prediction'):
-            self.prediction = slim.fully_connected(self.final_state, 1, activation_fn=None,
+            hidden = slim.fully_connected(self.final_state, 10, activation_fn=tf.nn.sigmoid,
+                                                   weights_initializer=tf.contrib.layers.xavier_initializer(),
+                                                   biases_initializer=tf.truncated_normal_initializer())
+            self.prediction = slim.fully_connected(hidden, 1, activation_fn=None,
                                                    weights_initializer=tf.contrib.layers.xavier_initializer(),
                                                    biases_initializer=tf.truncated_normal_initializer())
 
