@@ -86,7 +86,7 @@ def extract_graphs(X, y):
         node.transitions = analog_nodes[node]
     # print_graph(analog_nodes, 'orig.png')
     print('num of nodes in original graph:', len(analog_nodes))
-    # trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node)
+    retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node)
 
     def color(node):
         if node.state.final:
@@ -102,10 +102,11 @@ def extract_graphs(X, y):
 
     print('num of nodes in the trimmed graph:', len(trimmed_graph))
     trimmed_states = [node.state for node in trimmed_graph]
-    quantized_nodes, init_node = get_quantized_graph(analog_states, init_state, rnn, X, y)
+    quantized_nodes, init_node = get_quantized_graph(analog_states, init_state, rnn, X, y, analog_nodes)
     acc = evaluate_graph(X, y, init_node)
     print('quantized graph is correct in {:.1f}% of the sentences classified correctly by the RNN'.format(acc * 100))
-    print_graph(quantized_nodes, 'quantized_graph_reduced.png')
+    if len(quantized_nodes) < 400:
+        print_graph(quantized_nodes, 'quantized_graph_reduced.png', init_node)
     retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized', init_node)
 
 

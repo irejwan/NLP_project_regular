@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from sklearn import cluster
 
 from clustering_handler import get_cluster, KMeans, get_best_meanshift_model
 from utils import *
@@ -73,7 +74,11 @@ def get_clustering_model(analog_states, init_state, net, X, y):
     states_vectors_pool = np.array([state.vec for state in analog_states])
     clustering_model = config.ClusteringModel.model.str
     if clustering_model == 'k_means':
-        cluster_model = get_kmeans(analog_states, init_state, net, X, y)
+        # cluster_model = get_kmeans(analog_states, init_state, net, X, y)
+        k = int(len(analog_states) ** 0.6)
+        states = [state.vec for state in analog_states]
+        cluster_model = KMeans(n_clusters=k).fit(states)
+        # cluster_model = cluster.AffinityPropagation().fit(states)
     else:
         cluster_model = get_best_meanshift_model(states_vectors_pool)
 
@@ -82,7 +87,7 @@ def get_clustering_model(analog_states, init_state, net, X, y):
     return cluster_model
 
 
-def get_quantized_graph(analog_states, init_state, net, train_data, labels):
+def get_quantized_graph(analog_states, init_state, net, train_data, labels, analog_nodes):
     """
     returns the nodes of the extracted graph, minimized by quantization.
     we merge the states by quantizing their vectors by using kmeans/meanshift algorithm - the nodes are the centers
@@ -103,6 +108,32 @@ def get_quantized_graph(analog_states, init_state, net, train_data, labels):
     return {node: node.transitions for node in nodes}, start
 
 
+def get_merged_graph_by_clusters(init_node, net, train_data, model):
+    clustered_graph = {init_node: {}}
+    nodes_map = {init_node: init_node}
+    init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
+    for sent in train_data:
+        curr_node = nodes_map[init_node]
+        for word in sent:
+            next_state_vec = np.array(net.get_next_state(curr_node.state.vec, word))
+            next_node = SearchNode(State(next_state_vec, quantized=get_cluster(next_state_vec, model)))
+            if next_node not in clustered_graph:
+                clustered_graph[next_node] = {}
+            if next_node not in nodes_map:
+                nodes_map[next_node] = next_node
+            curr_node = nodes_map[curr_node]
+            next_node = nodes_map[next_node]
+            if word in clustered_graph[curr_node] and clustered_graph[curr_node][word] != next_node:
+                print("conflict")
+                word += 10
+            clustered_graph[curr_node][word] = next_node
+            curr_node = next_node
+        curr_node.state.final = net.is_accept(np.array([curr_node.state.vec]))
+    for node in clustered_graph:
+        node.transitions = clustered_graph[node]
+    return clustered_graph
+
+
 def get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, init_state, net, train_data):
     """
     :param alphabet_idx:  the alphabet indices
@@ -115,14 +146,8 @@ def get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, in
     """
     quantize_states(analog_states, model=cluster_model)
     start = SearchNode(State(init_state))
-    nodes = get_graph(net, start, alphabet_idx, model=cluster_model)
-    start.state.final = net.is_accept(np.array([start.state.vec]))
-    for sent in train_data:
-        curr_node = start
-        for word in sent:
-            next_node = curr_node.transitions[word]
-            curr_node = next_node
-        curr_node.state.final = net.is_accept(np.array([curr_node.state.vec]))
+    # nodes = get_graph(net, start, alphabet_idx, model=cluster_model)
+    nodes = get_merged_graph_by_clusters(start, net, train_data, model=cluster_model)
     return nodes, start
 
 
@@ -143,11 +168,11 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
         print('trimmed graph too big, skipping MN')
         return trimmed_states
 
-    print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png')
+    print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png', init_node)
 
     reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph}, init_node)
     print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
-    print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png')
+    print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png', init_node)
 
     if plot and len(trimmed_graph) > 0:
         all_nodes = list(trimmed_graph)  # we cast the set into a list, so we'll keep the order

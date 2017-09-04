@@ -10,7 +10,7 @@ from config import Config
 config = Config()
 
 
-def print_graph(nodes_list, graph_name):
+def print_graph(nodes_list, graph_name, init_node=None):
     _, inv_alphabet_map = get_data_alphabet()
     graph = pydot.Dot(graph_type='digraph')
     nodes_dict = dict()
@@ -19,6 +19,8 @@ def print_graph(nodes_list, graph_name):
     for state in nodes_list:
         is_accept = state.is_accept
         color = 'green' if is_accept else 'red'
+        if state == init_node:
+            color = 'pink'
         nodes_dict[state] = pydot.Node(i, style="filled", fillcolor=color)
         graph.add_node(nodes_dict[state])
         i += 1
