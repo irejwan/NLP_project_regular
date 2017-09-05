@@ -28,9 +28,18 @@ def print_graph(nodes_list, graph_name, init_node=None):
 
     for state in nodes_list:
         trans = state.transitions
-        for input in trans.keys():
-            next_state = trans[input]
-            graph.add_edge(pydot.Edge(nodes_dict[state], nodes_dict[next_state], label=str(inv_alphabet_map[input])))
+        next_state_to_inputs = {value: [] for value in trans.values()}
+        for input_char in trans:  # merge edges that lead to the same next state
+            next_state = trans[input_char]
+            next_state_to_inputs[next_state].append(str(inv_alphabet_map[input_char]))
+        for next_state in next_state_to_inputs:
+            graph.add_edge(pydot.Edge(nodes_dict[state], nodes_dict[next_state],
+                                      label=', '.join(next_state_to_inputs[next_state])))
+            graph.set_edge_defaults()
+        # for input in trans.keys():
+        #     next_state = trans[input]
+        #     graph.add_edge(pydot.Edge(nodes_dict[state], nodes_dict[next_state], label=str(inv_alphabet_map[input])))
+        #     graph.set_edge_defaults()
     graph.write_png(graph_name)
 
 
