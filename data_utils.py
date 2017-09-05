@@ -204,7 +204,13 @@ def read_conll_pos_file(path):
                 tokens = line.strip().split("\t")
                 pos = tokens[3]
                 curr.append(pos_category_map[pos])
-    return sents
+    return list(filter(filter_by_verb, sents))
+
+
+def filter_by_verb(sent):
+    if 'V' not in sent:
+        return False
+    return True
 
 
 def get_data_alphabet():
@@ -238,6 +244,7 @@ def get_phonology_data(total_num_of_sents, alphabet_map):
     data = list(map(lambda sent: [alphabet_map[s] for s in list(sent)], grammaticals + ungrammaticals))
     labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
     return data, labels
+
 
 if __name__ == '__main__':
     get_phonology_data(100,get_data_alphabet()[0])
