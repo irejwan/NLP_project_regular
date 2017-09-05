@@ -94,7 +94,7 @@ def get_quantized_graph(analog_states, init_node, net, X, y, plot=False):
         plot_states(states_vectors_pool, cluster_model.predict(states_vectors_pool))
 
     nodes, start = get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, init_node, net, X)
-    return nodes
+    return nodes, start
 
 
 def get_merged_graph_by_clusters(init_node, net, train_data, model):
@@ -174,7 +174,7 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
     return trimmed_states
 
 
-def get_kmeans(analog_states, init_node, net, X, y, min_k=50, acc_th=0.9):
+def get_kmeans(analog_states, init_node, net, X, y, min_k=50, acc_th=0.99):
     _, alphabet_idx = get_data_alphabet()
     print('working on k-means')
     size = len(analog_states) - 1

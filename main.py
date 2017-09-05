@@ -115,8 +115,8 @@ def extract_graphs():
             y_pred = 1 if y_hat > 0 else 0
             predictions.append(y_pred)
 
-        quantized_nodes = get_quantized_graph(analog_states, init_node, rnn, X_val_distinct, predictions)
-        acc = evaluate_graph(X_test, y_test, init_node)
+        quantized_nodes, init_node = get_quantized_graph(analog_states, init_node, rnn, X_val_distinct, predictions)
+        acc = evaluate_graph(X_val_distinct, predictions, init_node)
         print('quantized graph is correct in {:.1f}% of test sentences'.format(acc * 100))
 
         if len(quantized_nodes) < 300:

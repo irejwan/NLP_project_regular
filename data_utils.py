@@ -63,7 +63,7 @@ def generate_sentences(alphabet_map):
 def get_penn_pos_data(total_num_of_sents, alphabet_map):
     alphabet = config.PTB.alphabet.lst if config.PTB.filter_alphabet.boolean else list(set(alphabet_map.keys()))
 
-    grammatical_sents = read_conll_pos_file("Penn_Treebank/train.gold.conll")
+    grammatical_sents = read_conll_pos_file("../Penn_Treebank/train.gold.conll")
     grammaticals = grammatical_sents[:total_num_of_sents//2] if config.PTB.use_orig_sent.boolean \
         else sample_concat_sentences(grammatical_sents, total_num_of_sents//2)
     # todo: Mor filter also for not orig sentences
