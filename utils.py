@@ -171,13 +171,16 @@ def get_trimmed_graph(analog_nodes):
 
 def evaluate_graph(X, y, init_node):
     acc = 0
+    errors = []
     for sent, label in zip(X, y):
         curr_node = init_node
         for word in sent:
             curr_node = curr_node.transitions[word]
         prediction = curr_node.is_accept
         acc += (prediction == label)
-    return acc / len(y)
+        if prediction != label:
+            errors.append(sent)
+    return acc / len(y), errors
 
 
 def is_accurate(X, y, init_node):
@@ -191,10 +194,9 @@ def is_accurate(X, y, init_node):
     return True
 
 
-def plot_states(states, colors, title, is_quantized_graph = False):
-    le = PCA(n_components=2)
-    le_X = le.fit_transform(states)
-    plt.scatter(le_X[:, 0], le_X[:, 1], c=colors)
+def plot_states(states, colors, title, pca_model, is_quantized_graph=False):
+    transformmed_X = pca_model.transform(states)
+    plt.scatter(transformmed_X[:, 0], transformmed_X[:, 1], c=colors)
     plt.title(title)
     if is_quantized_graph:
         accept_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="green")

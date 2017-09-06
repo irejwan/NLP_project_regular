@@ -68,7 +68,7 @@ def get_analog_nodes(train_data, init_node, net):
     return analog_nodes
 
 
-def get_quantized_graph(analog_states, init_node, net, X, y, plot=False):
+def get_quantized_graph(analog_states, init_node, net, X, y, pca_model, plot=False):
     """
     returns the nodes of the extracted graph, minimized by quantization.
     we merge the states by quantizing their vectors by using kmeans/meanshift algorithm - the nodes are the centers
@@ -91,7 +91,7 @@ def get_quantized_graph(analog_states, init_node, net, X, y, plot=False):
         cluster_model = get_best_meanshift_model(states_vectors_pool)
 
     if plot:
-        plot_states(states_vectors_pool, cluster_model.predict(states_vectors_pool))
+        plot_states(states_vectors_pool, cluster_model.predict(states_vectors_pool), 'K-means clusters', pca_model)
 
     nodes, start = get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, init_node, net, X)
     return nodes, start
@@ -139,7 +139,7 @@ def get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, in
     return nodes, init_node
 
 
-def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, path='', plot=False):
+def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, pca_model, path='', plot=False):
     """
     returns the exact equivalent graph using MN algorithm.
     complexity improvement: we trim the graph first - meaning, we only keep nodes that lead to an accepting state.
@@ -164,17 +164,17 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
     print_graph(reduced_nodes, path + graph_prefix_name + '_minimized_mn.png', init_node)
 
     if plot and len(trimmed_graph) > 0:
-        all_nodes = list(trimmed_graph)  # we cast the set into a list, so we'll keep the order
+        all_nodes = list(graph_nodes)  # we cast the set into a list, so we'll keep the order
         all_states = [node.state.vec for node in all_nodes]
         representatives = set([node.representative for node in trimmed_graph])
         representatives_colors_map = {rep: i for i, rep in enumerate(representatives)}
-        colors = [representatives_colors_map[node.representative] for node in all_nodes]
-        plot_states(all_states, colors, 'Myhill-Nerode equivalent states - ' + graph_prefix_name)
+        colors = [representatives_colors_map.get(node.representative, 'r') for node in all_nodes]
+        plot_states(all_states, colors, 'Myhill-Nerode equivalent states - ' + graph_prefix_name, pca_model)
 
     return trimmed_states
 
 
-def get_kmeans(analog_states, init_node, net, X, y, min_k=50, acc_th=0.99):
+def get_kmeans(analog_states, init_node, net, X, y, min_k=2, acc_th=0.99):
     _, alphabet_idx = get_data_alphabet()
     print('working on k-means')
     size = len(analog_states) - 1
@@ -217,7 +217,7 @@ def evaluate_kmeans_model(k, alphabet_idx, analog_states, init_node, net, X, y):
     states_vectors_pool = np.array([state.vec for state in analog_states])
     curr_model = KMeans(n_clusters=k, algorithm='elkan', max_iter=20).fit(states_vectors_pool)
     _, init_node = get_quantized_graph_for_model(alphabet_idx, analog_states, curr_model, init_node, net, X)
-    adeq = evaluate_graph(X, y, init_node)
+    adeq, _ = evaluate_graph(X, y, init_node)
     clk2 = time.clock()
     print('took {:.2f} sec,'.format(clk2 - clk), 'adequate to the net in', adeq, 'of validation sentences')
     return adeq, curr_model

@@ -83,19 +83,21 @@ def extract_graphs():
     X_val_distinct = list(set([tuple(x) for x in X_val]))
     analog_nodes = get_analog_nodes(X_val_distinct, init_node, rnn)
     analog_states = [node.state for node in analog_nodes if not node == init_node]
+    pca_model = PCA(n_components=2)
+    pca_model = pca_model.fit([node.state.vec for node in analog_nodes])
 
     if len(analog_nodes) < 300:
         print_graph(analog_nodes, path + 'orig.png')
 
     print('num of nodes in original graph:', len(analog_nodes))
-    trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'original', init_node, path=path, plot=plot)
+    trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'original', init_node, pca_model, path=path, plot=plot)
 
     trimmed_graph = get_trimmed_graph(analog_nodes)
     states = [node.state.vec for node in analog_nodes]
     colors = [color(node, init_node) for node in analog_nodes]
 
     if plot:
-        plot_states(states, colors, 'RNN\'s Continuous States', True)
+        plot_states(states, colors, 'RNN\'s Continuous States', pca_model, True)
 
     print('num of nodes in the trimmed graph:', len(trimmed_graph))
 
@@ -106,14 +108,16 @@ def extract_graphs():
             y_pred = 1 if y_hat > 0 else 0
             predictions.append(y_pred)
 
-        quantized_nodes, init_node = get_quantized_graph(analog_states, init_node, rnn, X_val_distinct, predictions)
-        acc = evaluate_graph(X_val_distinct, predictions, init_node)
+        quantized_nodes, init_node = get_quantized_graph(analog_states, init_node, rnn, X_val_distinct, predictions, pca_model, plot=plot)
+        acc, errors = evaluate_graph(X_val_distinct, predictions, init_node)
         print('quantized graph is correct in {:.1f}% of test sentences'.format(acc * 100))
+        print('the FSA was wrong in the following sentences:')
+        print(errors)
 
         if len(quantized_nodes) < 300:
             print_graph(quantized_nodes, 'quantized_graph_reduced.png', init_node)
 
-        retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized', init_node, path=path, plot=plot)
+        retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized', init_node, pca_model, path=path, plot=plot)
 
 
 if __name__ == '__main__':
