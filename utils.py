@@ -11,34 +11,38 @@ import matplotlib.pyplot as plt
 config = Config()
 
 
+def color(node, init_node):
+    if node.state.final:
+        return 'green'
+    if node == init_node:
+        return 'blue'
+    return 'red'
+
+
 def print_graph(nodes_list, graph_name, init_node=None):
     _, inv_alphabet_map = get_data_alphabet()
     graph = pydot.Dot(graph_type='digraph')
     nodes_dict = dict()
     i = 0
 
-    for state in nodes_list:
-        is_accept = state.is_accept
-        color = 'green' if is_accept else 'red'
-        if state == init_node:
-            color = 'pink'
-        nodes_dict[state] = pydot.Node(i, style="filled", fillcolor=color)
-        graph.add_node(nodes_dict[state])
+    for node in nodes_list:
+        nodes_dict[node] = pydot.Node(i, style="filled", fillcolor=color(node, init_node))
+        graph.add_node(nodes_dict[node])
         i += 1
 
-    for state in nodes_list:
-        trans = state.transitions
+    for node in nodes_list:
+        trans = node.transitions
         next_state_to_inputs = {value: [] for value in trans.values()}
-        for input_char in trans:  # merge edges that lead to the same next state
+        for input_char in trans:  # merge edges that lead to the same next node
             next_state = trans[input_char]
             next_state_to_inputs[next_state].append(str(inv_alphabet_map[input_char]))
         for next_state in next_state_to_inputs:
-            graph.add_edge(pydot.Edge(nodes_dict[state], nodes_dict[next_state],
+            graph.add_edge(pydot.Edge(nodes_dict[node], nodes_dict[next_state],
                                       label=', '.join(next_state_to_inputs[next_state])))
             graph.set_edge_defaults()
         # for input in trans.keys():
         #     next_state = trans[input]
-        #     graph.add_edge(pydot.Edge(nodes_dict[state], nodes_dict[next_state], label=str(inv_alphabet_map[input])))
+        #     graph.add_edge(pydot.Edge(nodes_dict[node], nodes_dict[next_state], label=str(inv_alphabet_map[input])))
         #     graph.set_edge_defaults()
     graph.write_png(graph_name)
 
@@ -163,40 +167,6 @@ def get_trimmed_graph(analog_nodes):
     return trimmed_graph
 
 
-def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, path='', plot=False):
-    """
-    returns the exact equivalent graph using MN algorithm.
-    complexity improvement: we trim the graph first - meaning, we only keep nodes that lead to an accepting state.
-    :param graph_nodes: the original graph nodes
-    :param graph_prefix_name: prefix name, for the .png file
-    :param init_node: the initial state node
-    :return: nothing
-    """
-    trimmed_graph = get_trimmed_graph(graph_nodes)
-    print('num of nodes in the', graph_prefix_name, 'trimmed graph:', len(trimmed_graph))
-    trimmed_states = [node.state for node in trimmed_graph]
-
-    if len(trimmed_graph) > 300:
-        print('trimmed graph too big, skipping MN')
-        return trimmed_states
-
-    print_graph(trimmed_graph, path + graph_prefix_name + '_trimmed_graph.png', init_node)
-
-    reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph}, init_node)
-    print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
-    print_graph(reduced_nodes, path + graph_prefix_name + '_minimized_mn.png', init_node)
-
-    if plot and len(trimmed_graph) > 0:
-        all_nodes = list(trimmed_graph)  # we cast the set into a list, so we'll keep the order
-        all_states = [node.state.vec for node in all_nodes]
-        representatives = set([node.representative for node in trimmed_graph])
-        representatives_colors_map = {rep: i for i, rep in enumerate(representatives)}
-        colors = [representatives_colors_map[node.representative] for node in all_nodes]
-        plot_states(all_states, colors)
-
-    return trimmed_states
-
-
 def evaluate_graph(X, y, init_node):
     acc = 0
     for sent, label in zip(X, y):
@@ -219,8 +189,9 @@ def is_accurate(X, y, init_node):
     return True
 
 
-def plot_states(states, colors):
+def plot_states(states, colors, title):
     le = PCA(n_components=2)
     le_X = le.fit_transform(states)
     plt.scatter(le_X[:, 0], le_X[:, 1], c=colors)
+    plt.title(title)
     plt.show()

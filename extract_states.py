@@ -51,7 +51,7 @@ def get_analog_nodes(train_data, init_node, net):
     :param init_node: the initial state (we start from this state for each input sentence)
     :return: all possible nodes, including transitions to the next nodes.
     """
-    init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
+    # init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
     analog_nodes = {init_node: {}}
     for sent in train_data:
         curr_node = init_node
@@ -100,7 +100,7 @@ def get_quantized_graph(analog_states, init_node, net, X, y, plot=False):
 def get_merged_graph_by_clusters(init_node, net, train_data, model):
     clustered_graph = {init_node: {}}
     nodes_map = {init_node: init_node}
-    init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
+    # init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
     for sent in train_data:
         curr_node = nodes_map[init_node]
         for word in sent:
@@ -139,7 +139,7 @@ def get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, in
     return nodes, init_node
 
 
-def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, plot=False):
+def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, path='', plot=False):
     """
     returns the exact equivalent graph using MN algorithm.
     complexity improvement: we trim the graph first - meaning, we only keep nodes that lead to an accepting state.
@@ -157,11 +157,11 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
         print('trimmed graph too big, skipping MN')
         return trimmed_states
 
-    print_graph(trimmed_graph, graph_prefix_name + '_trimmed_graph.png', init_node)
+    print_graph(trimmed_graph, path + graph_prefix_name + '_trimmed_graph.png', init_node)
 
     reduced_nodes = minimize_dfa({node: node.transitions for node in trimmed_graph}, init_node)
     print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
-    print_graph(reduced_nodes, graph_prefix_name + '_minimized_mn.png', init_node)
+    print_graph(reduced_nodes, path + graph_prefix_name + '_minimized_mn.png', init_node)
 
     if plot and len(trimmed_graph) > 0:
         all_nodes = list(trimmed_graph)  # we cast the set into a list, so we'll keep the order
@@ -169,7 +169,7 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
         representatives = set([node.representative for node in trimmed_graph])
         representatives_colors_map = {rep: i for i, rep in enumerate(representatives)}
         colors = [representatives_colors_map[node.representative] for node in all_nodes]
-        plot_states(all_states, colors)
+        plot_states(all_states, colors, 'Myhill-Nerode equivalent states - ' + graph_prefix_name)
 
     return trimmed_states
 

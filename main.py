@@ -88,23 +88,14 @@ def extract_graphs():
         print_graph(analog_nodes, path + 'orig.png')
 
     print('num of nodes in original graph:', len(analog_nodes))
-    trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'orig', init_node, path=path, plot=plot)
-
-    def color(node):
-        if node.state.final:
-            return 'g'
-        if node in trimmed_graph:
-            return 'b'
-        if node == init_node:
-            return 'y'
-        return 'r'
+    trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'original', init_node, path=path, plot=plot)
 
     trimmed_graph = get_trimmed_graph(analog_nodes)
     states = [node.state.vec for node in analog_nodes]
-    colors = [color(node) for node in analog_nodes]
+    colors = [color(node, init_node) for node in analog_nodes]
 
     if plot:
-        plot_states(states, colors)
+        plot_states(states, colors, 'RNN\'s Continuous States')
 
     print('num of nodes in the trimmed graph:', len(trimmed_graph))
 
