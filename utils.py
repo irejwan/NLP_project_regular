@@ -7,6 +7,8 @@ from state import State
 from config import Config
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
+
 
 config = Config()
 
@@ -189,9 +191,15 @@ def is_accurate(X, y, init_node):
     return True
 
 
-def plot_states(states, colors, title):
+def plot_states(states, colors, title, is_quantized_graph = False):
     le = PCA(n_components=2)
     le_X = le.fit_transform(states)
     plt.scatter(le_X[:, 0], le_X[:, 1], c=colors)
     plt.title(title)
+    if is_quantized_graph:
+        accept_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="green")
+        reject_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="red")
+        trimmed_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="blue")
+        plt.legend((accept_legend, reject_legend, trimmed_legend), ('accept state', 'reject state', 'trimmed state'), numpoints=1, loc=1)
+
     plt.show()

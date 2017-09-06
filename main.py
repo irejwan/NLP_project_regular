@@ -95,7 +95,7 @@ def extract_graphs():
     colors = [color(node, init_node) for node in analog_nodes]
 
     if plot:
-        plot_states(states, colors, 'RNN\'s Continuous States')
+        plot_states(states, colors, 'RNN\'s Continuous States', True)
 
     print('num of nodes in the trimmed graph:', len(trimmed_graph))
 

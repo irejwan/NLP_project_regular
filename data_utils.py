@@ -4,7 +4,6 @@ from copy import copy
 import rstr
 import numpy as np
 from config import Config
-from PCFG import PCFG
 
 config = Config()
 
@@ -22,7 +21,6 @@ pos_category_map = \
         'UH': 'U'
     }
 pos_category_to_num = {cat: i for i, cat in enumerate(sorted(set(pos_category_map.values())))}
-
 
 def generate_sentences(alphabet_map):
     """Generate data and return it splitted to train, test and labels"""
@@ -43,8 +41,6 @@ def generate_sentences(alphabet_map):
     zipped = list(zip(raw_x, raw_y))
     random.shuffle(zipped)
     raw_x, raw_y = zip(*zipped)
-    for i, j in zip(raw_x[:5], raw_y[:5]):
-        print(i, j)
 
     X_train, y_train = raw_x[:size_train], raw_y[:size_train]
     X_val, y_val = raw_x[size_train:(size_train + size_val)], raw_y[size_train:(size_train + size_val)]
@@ -63,7 +59,7 @@ def generate_sentences(alphabet_map):
 def get_penn_pos_data(total_num_of_sents, alphabet_map):
     alphabet = config.PTB.alphabet.lst if config.PTB.filter_alphabet.boolean else list(set(alphabet_map.keys()))
 
-    grammatical_sents = read_conll_pos_file("../Penn_Treebank/train.gold.conll")
+    grammatical_sents = read_conll_pos_file("Penn_Treebank/train.gold.conll")
     grammaticals = grammatical_sents[:total_num_of_sents//2] if config.PTB.use_orig_sent.boolean \
         else sample_concat_sentences(grammatical_sents, total_num_of_sents//2)
     # todo: Mor filter also for not orig sentences
@@ -139,16 +135,6 @@ def sample_concat_sentences(sents, num_of_sents):
     for i in range(num_of_sents):
         action = np.random.choice([sample, concat])
         output.append(action(filtered_sents))
-    return output
-
-
-def generate_simple_english_grammar(num_of_sents, max_seq_len):
-    pcfg = PCFG.from_file('grammar.txt')
-    output = set()
-    while len(output) < num_of_sents:
-        sent = pcfg.random_sent()
-        if len(sent.split()) < max_seq_len:
-            output.add(sent)
     return output
 
 
