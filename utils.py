@@ -200,6 +200,6 @@ def plot_states(states, colors, title, is_quantized_graph = False):
         accept_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="green")
         reject_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="red")
         trimmed_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="blue")
-        plt.legend((accept_legend, reject_legend, trimmed_legend), ('accept state', 'reject state', 'trimmed state'), numpoints=1, loc=1)
+        plt.legend((accept_legend, reject_legend, trimmed_legend), ('accept state', 'reject state', 'starting state'), numpoints=1, loc=1)
 
     plt.show()
