@@ -1,5 +1,6 @@
 import random
 import re
+from string import ascii_lowercase as al
 from copy import copy
 import rstr
 import numpy as np
@@ -35,8 +36,10 @@ def generate_sentences(alphabet_map):
         raw_x, raw_y = get_penn_pos_data(DATA_AMOUNT, alphabet_map)
     elif source == 'phonology':
         raw_x, raw_y = get_phonology_data(DATA_AMOUNT, alphabet_map)
+    elif source == 'phonology_plurals':
+        raw_x, raw_y = get_phonology_plural_data(DATA_AMOUNT, alphabet_map)
     else:
-        raise Exception('must provide source between: regex, ptb, phonology')
+        raise Exception('must provide source between: regex, ptb, phonology, phonology_plurals')
 
     zipped = list(zip(raw_x, raw_y))
     random.shuffle(zipped)
@@ -118,6 +121,35 @@ def filter_by_pos(sent):
             return False
     return True
 
+def list_flatten(l):
+    flat_list = []
+    for sublist in l:
+        for item in sublist:
+            flat_list.append(item)
+    return flat_list
+
+def map_to_seq(word):
+    alphabet_dict = {'s': 's', 'ss' : 's', 'z':'s', 'x':'s', 'ch':'s','sh':'s',
+                   'a':'v', 'i':'v', 'u':'v', 'o':'v',
+                   'e':'e'}
+    new_word = ''
+    i = 0
+    while i < len(word):
+        c = word[i]
+        if i < len(word) - 1:
+            if c + word[i+1] in alphabet_dict:
+                new_word += alphabet_dict[c + word[i+1]]
+                i += 1
+            elif c in alphabet_dict:
+                new_word += alphabet_dict[c]
+            else:
+                new_word += 'c'
+        elif c in alphabet_dict:
+            new_word += alphabet_dict[c]
+        else:
+            new_word += 'c'
+        i += 1
+    return new_word
 
 def sample_concat_sentences(sents, num_of_sents):
     filtered_sents = list(filter(lambda sent: filter_by_pos(sent), sents))
@@ -192,6 +224,23 @@ def read_conll_pos_file(path):
                 curr.append(pos_category_map[pos])
     return list(filter(filter_by_verb, sents))
 
+def read_conll_word_pos_file(path):
+    """
+        Takes a path to a file and returns a list of word/tag pairs
+    """
+    sents = []
+    with open(path, "r") as f:
+        curr = []
+        for line in f:
+            line = line.strip()
+            if line == "":
+                sents.append(curr)
+                curr = []
+            else:
+                tokens = line.strip().split("\t")
+                curr.append((tokens[1],tokens[3]))
+    return sents
+
 
 def filter_by_verb(sent):
     if 'V' not in sent:
@@ -209,8 +258,11 @@ def get_data_alphabet():
         if config.PTB.filter_alphabet.boolean:  # returning the filtered alphabet
             alphabet_map = {pos: num for pos, num in pos_category_to_num.items()
                             if pos in config.PTB.alphabet.lst}
-    else:   # phonology
+    elif source == 'phonology':
         alphabet_map = {'C': 0, 'V': 1}
+    elif source == 'phonology_plurals':
+        alphabet_map = {'s': 0, 'v': 1, 'e' : 2, 'c' : 3}
+
     return alphabet_map, {v: k for k, v in alphabet_map.items()}
 
 
@@ -231,6 +283,25 @@ def get_phonology_data(total_num_of_sents, alphabet_map):
     labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
     return data, labels
 
+def get_phonology_plural_data(total_num_of_sents, alphabet_map):
+    alphabet = list(alphabet_map.keys())
+
+    grammatical_sents = read_conll_word_pos_file("Penn_Treebank/train.gold.conll")
+    allowed_pos = {'NNS'}
+    grammatical_sents = list_flatten(grammatical_sents)
+    grammatical_sents = filter(lambda x: True if x[1] in allowed_pos else False, grammatical_sents)
+    grammaticals = list(np.random.choice([word[0] for word in grammatical_sents], total_num_of_sents // 2))
+    grammaticals = list(map(lambda x: x.lower(),grammaticals))
+    grammaticals = list(map(map_to_seq, grammaticals))
+
+    ungrammaticals = get_ungrammatical_sentences(alphabet, grammaticals, total_num_of_sents // 2,
+                                                 filter_out_grammatical_sentences, grammaticals)
+
+    data = list(map(lambda sent: [alphabet_map[s] for s in list(sent)], grammaticals + ungrammaticals))
+    labels = np.array([1] * len(grammaticals) + [0] * len(ungrammaticals))
+    return data, labels
+
+
 
 if __name__ == '__main__':
-    get_phonology_data(100,get_data_alphabet()[0])
+    get_phonology_plural_data(100,get_data_alphabet()[0])
