@@ -16,8 +16,8 @@ config = Config()
 def color(node, init_node):
     if node.state.final:
         return 'green'
-    if node == init_node:
-        return 'blue'
+    # if node == init_node:
+    #     return 'blue'
     return 'red'
 
 
@@ -25,12 +25,16 @@ def print_graph(nodes_list, graph_name, init_node=None):
     _, inv_alphabet_map = get_data_alphabet()
     graph = pydot.Dot(graph_type='digraph')
     nodes_dict = dict()
-    i = 0
+    i = 1
 
     for node in nodes_list:
-        nodes_dict[node] = pydot.Node(i, style="filled", fillcolor=color(node, init_node))
+        if node == init_node:
+            label = 0
+        else:
+            label = i
+            i += 1
+        nodes_dict[node] = pydot.Node(label, style="filled", fillcolor=color(node, init_node))
         graph.add_node(nodes_dict[node])
-        i += 1
 
     for node in nodes_list:
         trans = node.transitions
@@ -194,14 +198,14 @@ def is_accurate(X, y, init_node):
     return True
 
 
-def plot_states(states, colors, title, pca_model, is_quantized_graph=False):
+def plot_states(states, colors, title, pca_model, path, is_quantized_graph=False):
     transformmed_X = pca_model.transform(states)
     plt.scatter(transformmed_X[:, 0], transformmed_X[:, 1], c=colors)
     plt.title(title)
     if is_quantized_graph:
         accept_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="green")
         reject_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="red")
-        trimmed_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="blue")
-        plt.legend((accept_legend, reject_legend, trimmed_legend), ('accept state', 'reject state', 'starting state'), numpoints=1, loc=1)
+        # trimmed_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="blue")
+        plt.legend((accept_legend, reject_legend), ('accept state', 'reject state'), numpoints=1, loc=1)
 
-    plt.show()
+    plt.savefig(path + title + '.jpg')

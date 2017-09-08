@@ -6,26 +6,6 @@ import numpy as np
 config = Config()
 
 
-def get_graph(net, start, alphabet, model=None):
-    """
-    running BFS - to get *all transitions for every node* which is reachable from the start.
-    :param net: the RNN
-    :param start: the starting node
-    :param alphabet: the alphabet on the transitions
-    :param model: quantization model
-    :return: the graph's nodes reachable from the start
-    """
-    visited, queue = set(), [start]
-    old_to_new_nodes = {start: start}
-    while queue:
-        vertex = queue.pop(0)
-        if vertex not in visited:
-            visited.add(vertex)
-            vertex_neighbors = vertex.get_next_nodes(net, alphabet, old_to_new_nodes, model)
-            queue.extend(vertex_neighbors - visited)
-    return visited
-
-
 def quantize_states(analog_states, model=None):
     """
     quantize an iterable of states by some quantization method.
@@ -51,7 +31,7 @@ def get_analog_nodes(train_data, init_node, net):
     :param init_node: the initial state (we start from this state for each input sentence)
     :return: all possible nodes, including transitions to the next nodes.
     """
-    # init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
+    init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
     analog_nodes = {init_node: {}}
     for sent in train_data:
         curr_node = init_node
@@ -68,7 +48,7 @@ def get_analog_nodes(train_data, init_node, net):
     return analog_nodes
 
 
-def get_quantized_graph(analog_states, init_node, net, X, y, pca_model, plot=False):
+def get_quantized_graph(analog_states, init_node, net, X, y, pca_model):
     """
     returns the nodes of the extracted graph, minimized by quantization.
     we merge the states by quantizing their vectors by using kmeans/meanshift algorithm - the nodes are the centers
@@ -85,13 +65,13 @@ def get_quantized_graph(analog_states, init_node, net, X, y, pca_model, plot=Fal
 
     states_vectors_pool = np.array([state.vec for state in analog_states if state != init_node.state])
     clustering_model = config.ClusteringModel.model.str
+    path = config.Misc.output_path.str
     if clustering_model == 'k_means':
         cluster_model = get_kmeans(analog_states, init_node, net, X, y)
     else:
         cluster_model = get_best_meanshift_model(states_vectors_pool)
 
-    if plot:
-        plot_states(states_vectors_pool, cluster_model.predict(states_vectors_pool), 'K-means clusters', pca_model)
+    plot_states(states_vectors_pool, cluster_model.predict(states_vectors_pool), 'K-means clusters', pca_model, path)
 
     nodes, start = get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, init_node, net, X)
     return nodes, start
@@ -100,7 +80,7 @@ def get_quantized_graph(analog_states, init_node, net, X, y, pca_model, plot=Fal
 def get_merged_graph_by_clusters(init_node, net, train_data, model):
     clustered_graph = {init_node: {}}
     nodes_map = {init_node: init_node}
-    # init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
+    init_node.state.final = net.is_accept(np.array([init_node.state.vec]))
     for sent in train_data:
         curr_node = nodes_map[init_node]
         for word in sent:
@@ -139,14 +119,14 @@ def get_quantized_graph_for_model(alphabet_idx, analog_states, cluster_model, in
     return nodes, init_node
 
 
-def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, pca_model, path='', plot=False):
+def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_node, pca_model, path):
     """
     returns the exact equivalent graph using MN algorithm.
     complexity improvement: we trim the graph first - meaning, we only keep nodes that lead to an accepting state.
     :param graph_nodes: the original graph nodes
     :param graph_prefix_name: prefix name, for the .png file
     :param init_node: the initial state node
-    :param plot: plot the states
+    :param path: path for saving the output plots and graphs
     :return: nothing
     """
     trimmed_graph = get_trimmed_graph(graph_nodes)
@@ -163,22 +143,23 @@ def retrieve_minimized_equivalent_graph(graph_nodes, graph_prefix_name, init_nod
     print('num of nodes in the', graph_prefix_name, 'mn graph:', len(reduced_nodes))
     print_graph(reduced_nodes, path + graph_prefix_name + '_minimized_mn.png', init_node)
 
-    if plot and len(trimmed_graph) > 0:
+    if len(trimmed_graph) > 0:
         all_nodes = list(graph_nodes)  # we cast the set into a list, so we'll keep the order
         all_states = [node.state.vec for node in all_nodes]
         representatives = set([node.representative for node in trimmed_graph])
         representatives_colors_map = {rep: i for i, rep in enumerate(representatives)}
         colors = [representatives_colors_map.get(node.representative, 'r') for node in all_nodes]
-        plot_states(all_states, colors, 'Myhill-Nerode equivalent states - ' + graph_prefix_name, pca_model)
+        plot_states(all_states, colors, 'Myhill-Nerode equivalent states - ' + graph_prefix_name, pca_model, path)
 
     return trimmed_states
 
 
-def get_kmeans(analog_states, init_node, net, X, y, min_k=2, acc_th=0.99):
+def get_kmeans(analog_states, init_node, net, X, y, min_k=2, acc_th=0.99, factor=None):
     _, alphabet_idx = get_data_alphabet()
     print('working on k-means')
     size = len(analog_states) - 1
-    factor = int(np.log(size))
+    if not factor:
+        factor = int(np.log(size))
     curr_k = min_k
 
     states_vectors_pool = np.array([state.vec for state in analog_states])
@@ -212,13 +193,13 @@ def get_kmeans(analog_states, init_node, net, X, y, min_k=2, acc_th=0.99):
 
 
 def evaluate_kmeans_model(k, alphabet_idx, analog_states, init_node, net, X, y):
-    print('k = {}:'.format(k), end=' ')
+    print('k = {}'.format(k), end=' ')
     clk = time.clock()
     states_vectors_pool = np.array([state.vec for state in analog_states])
     curr_model = KMeans(n_clusters=k, algorithm='elkan', max_iter=20).fit(states_vectors_pool)
     _, init_node = get_quantized_graph_for_model(alphabet_idx, analog_states, curr_model, init_node, net, X)
     adeq, _ = evaluate_graph(X, y, init_node)
     clk2 = time.clock()
-    print('took {:.2f} sec,'.format(clk2 - clk), 'adequate to the net in', adeq, 'of validation sentences')
+    print('took {:.2f} sec,'.format(clk2 - clk), 'match rate: {:.2f}%'.format(adeq*100))
     return adeq, curr_model
 

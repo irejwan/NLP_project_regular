@@ -12,7 +12,6 @@ config = Config()
 
 NUM_EPOCHS = config.RNN.NUM_EPOCHS.int
 state_size = config.RNN.state_size.int
-plot = config.Misc.plot.boolean
 path = config.Misc.output_path.str
 init_state = np.zeros(state_size)
 
@@ -90,14 +89,13 @@ def extract_graphs():
         print_graph(analog_nodes, path + 'orig.png')
 
     print('num of nodes in original graph:', len(analog_nodes))
-    trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'original', init_node, pca_model, path=path, plot=plot)
+    trimmed_states = retrieve_minimized_equivalent_graph(analog_nodes, 'original', init_node, pca_model, path=path)
 
     trimmed_graph = get_trimmed_graph(analog_nodes)
     states = [node.state.vec for node in analog_nodes]
     colors = [color(node, init_node) for node in analog_nodes]
 
-    if plot:
-        plot_states(states, colors, 'RNN\'s Continuous States', pca_model, True)
+    plot_states(states, colors, 'RNN\'s continuous state vectors', pca_model, path, True)
 
     print('num of nodes in the trimmed graph:', len(trimmed_graph))
 
@@ -108,7 +106,7 @@ def extract_graphs():
             y_pred = 1 if y_hat > 0 else 0
             predictions.append(y_pred)
 
-        quantized_nodes, init_node = get_quantized_graph(analog_states, init_node, rnn, X_val_distinct, predictions, pca_model, plot=plot)
+        quantized_nodes, init_node = get_quantized_graph(analog_states, init_node, rnn, X_val_distinct, predictions, pca_model)
         acc, errors = evaluate_graph(X_val_distinct, predictions, init_node)
         print('quantized graph is correct in {:.1f}% of test sentences'.format(acc * 100))
         print('the FSA was wrong in the following sentences:')
@@ -117,7 +115,7 @@ def extract_graphs():
         if len(quantized_nodes) < 300:
             print_graph(quantized_nodes, 'quantized_graph_reduced.png', init_node)
 
-        retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized', init_node, pca_model, path=path, plot=plot)
+        retrieve_minimized_equivalent_graph(quantized_nodes, 'quantized', init_node, pca_model, path=path)
 
 
 if __name__ == '__main__':
