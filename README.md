@@ -4,7 +4,7 @@ Code for training and evaluation of the model from ["Regular Grammar induction U
 
 ## Run the program end-to-end
 
-?To start training the model, first download the dataset, available at <http://www.statmt.org/lm-benchmark/>, and extract it into the `./data` directory.
+To start training the model for PTB grammar, first download the dataset, available at <https://web.archive.org/web/19970614160127/http://www.cis.upenn.edu:80/~treebank/>, and extract it into the `./Penn_Treebank` directory.
 
 Then use the following command:
 
