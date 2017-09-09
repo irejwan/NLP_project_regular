@@ -2,7 +2,7 @@
 
 Code for training and evaluation of the model from ["Regular Grammar induction Using Recurrent Neural Network"](https://arxiv.org/abs/...).  
 
-## Run E2E
+## Run the program end-to-end
 
 ?To start training the model, first download the dataset, available at <http://www.statmt.org/lm-benchmark/>, and extract it into the `./data` directory.
 
@@ -56,5 +56,3 @@ output_path - path to output graphs and visualisations
 ```
 
 Parameters can be set by changing their value in the config file - config.cfg.
-
-```
