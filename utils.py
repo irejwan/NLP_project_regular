@@ -208,4 +208,4 @@ def plot_states(states, colors, title, pca_model, path, is_quantized_graph=False
         # trimmed_legend = mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="blue")
         plt.legend((accept_legend, reject_legend), ('accept state', 'reject state'), numpoints=1, loc=1)
 
-    plt.savefig(path + title + '.jpg')
+    plt.savefig(path + title + '.png')
